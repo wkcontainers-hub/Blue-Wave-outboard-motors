@@ -18,6 +18,15 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   const { login, register } = useStore();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(defaultMode);
 
+  // Sync mode whenever modal opens or defaultMode changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(defaultMode);
+      setError(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, defaultMode]);
+
   // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -91,6 +100,34 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
         >
           <X className="w-5 h-5" />
         </button>
+
+        {/* Mode Tabs (Sign Up & Log In) */}
+        {mode !== 'forgot' && (
+          <div className="flex bg-[#060D17] p-1 rounded-xl border border-white/10 mb-6">
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError(null); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                mode === 'login'
+                  ? 'bg-[#0088FF] text-white shadow-md shadow-[#0088FF]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Log In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setError(null); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                mode === 'register'
+                  ? 'bg-[#0088FF] text-white shadow-md shadow-[#0088FF]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
 
         {/* Modal Header */}
         <div className="text-center mb-6">

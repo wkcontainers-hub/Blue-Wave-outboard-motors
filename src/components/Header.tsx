@@ -18,7 +18,7 @@ interface HeaderProps {
   currentPage: PageId;
   onNavigate: (page: PageId) => void;
   onOpenCart?: () => void;
-  onOpenAuth?: () => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onOpenCart, onOpenAuth }) => {

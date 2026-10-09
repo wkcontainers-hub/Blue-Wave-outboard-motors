@@ -208,6 +208,12 @@ export function initDatabase() {
       id TEXT PRIMARY KEY,
       data_json TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS page_content (
+      page_id TEXT PRIMARY KEY,
+      data_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Seed default admin if not exists
@@ -626,5 +632,150 @@ export function initDatabase() {
         new Date().toISOString()
       );
     }
+  }
+
+  // Update existing products with authentic photorealistic motor photography
+  try {
+    const photoUpdates = [
+      { id: 'bw-mot-001', photos: ['/src/assets/images/yamaha_v6_offshore_1791559510414.jpg'] },
+      { id: 'bw-mot-002', photos: ['/src/assets/images/suzuki_df140_motor_1791559527791.jpg'] },
+      { id: 'bw-mot-003', photos: ['/src/assets/images/mercury_offshore_motor_1791036614640.jpg'] },
+      { id: 'bw-mot-004', photos: ['/src/assets/images/portable_outboard_motor_1791036573522.jpg'] },
+      { id: 'bw-mot-005', photos: ['/src/assets/images/honda_bf250_motor_1791559549672.jpg'] },
+      { id: 'bw-mot-006', photos: ['/src/assets/images/service_outboard_engine_1791036551185.jpg'] },
+      { id: 'bw-mot-007', photos: ['/src/assets/images/mercury_150_fourstroke_1791559568340.jpg'] },
+      { id: 'bw-mot-008', photos: ['/src/assets/images/suzuki_df140_motor_1791559527791.jpg'] },
+      { id: 'bw-mot-009', photos: ['/src/assets/images/yamaha_v6_offshore_1791559510414.jpg'] },
+      { id: 'bw-mot-010', photos: ['/src/assets/images/honda_bf250_motor_1791559549672.jpg', '/src/assets/images/used_outboard_inspection_1791036626286.jpg'] },
+    ];
+    for (const u of photoUpdates) {
+      db.prepare('UPDATE products SET product_photos_json = ? WHERE id = ?').run(
+        JSON.stringify(u.photos),
+        u.id
+      );
+    }
+  } catch (err) {
+    console.warn('Could not update product photo paths:', err);
+  }
+
+  // Seed default page content if not exists
+  const existingHome = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('home');
+  if (!existingHome) {
+    const defaultHome = {
+      heroBadge: 'MARINE POWER SPECIALISTS',
+      heroTitle: 'POWER YOUR',
+      heroHighlight: 'NEXT ADVENTURE.',
+      heroSubtitle: 'New and used outboard motors for boat owners, anglers, and commercial operators. Sales, service, parts and delivery — all in one place.',
+      heroImage: '/src/assets/images/hero_outboard_boat_1791036528701.jpg',
+      primaryCtaText: 'SHOP OUTBOARDS',
+      secondaryCtaText: 'REQUEST A MOTOR',
+      commitmentBadge: 'THE BLUEWAVE COMMITMENT',
+      commitmentTitle: 'Precision Outboard Power,',
+      commitmentHighlight: 'Backed by Marine Experts.',
+      commitmentText: 'Whether you need a lightweight portable 4-stroke for your tender, a rugged inline engine for your bay boat, or high-output multi-engine power for offshore tournaments, BlueWave Outboard Motors delivers genuine reliability, honest consultations, and seamless procurement.',
+      featurePoints: [
+        { title: 'NEW & USED MOTORS', subtitle: 'Top-tier brands & sizes' },
+        { title: 'SALES & SERVICE', subtitle: 'Factory-trained marine care' },
+        { title: 'PARTS & ACCESSORIES', subtitle: 'Controls, rigging & props' },
+        { title: 'DELIVERY AVAILABLE', subtitle: 'Direct to dock or freight' },
+      ],
+      repowerCard: {
+        tag: 'IN-DEMAND REPOWER',
+        powerRange: '115 – 300+ HP',
+        title: 'Looking to repower your current hull?',
+        desc: 'Share your current boat transom height, steering setup, and performance goals. We match you with the optimal motor class.',
+        image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+        ctaText: 'Request Repower Quote',
+      },
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'home',
+      JSON.stringify(defaultHome),
+      new Date().toISOString()
+    );
+  }
+
+  const existingAbout = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('about');
+  if (!existingAbout) {
+    const defaultAbout = {
+      badge: 'ABOUT BLUEWAVE',
+      title: 'Built around',
+      titleHighlight: 'life on the water.',
+      subtitle: 'BlueWave Outboard Motors is a marine-focused business designed to make finding the right outboard motor simple and straightforward.',
+      image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+      badgeOverlayTitle: 'Dealership Verified Quality',
+      badgeOverlayDesc: 'Inspected, compression-tested, and ready for water.',
+      badgeOverlayTag: 'BLUEWAVE SPEC',
+      ctaText: 'Talk to BlueWave',
+      bullets: [
+        'New and used outboard motor sourcing',
+        'Popular brands and horsepower classes',
+        'Service, parts and accessories support',
+        'Delivery options for customers',
+      ],
+      storyParagraph1: 'Founded with a pure passion for marine mechanics and blue-water performance, BlueWave Outboard Motors was established to provide boaters with an honest, transparent, and technically competent dealership experience.',
+      storyParagraph2: 'From lightweight dinghy portables to multi-engine offshore tournament setups, every motor in our inventory undergoes extensive multi-point inspection, compression verification, and run testing.',
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'about',
+      JSON.stringify(defaultAbout),
+      new Date().toISOString()
+    );
+  }
+
+  const existingServices = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('services');
+  if (!existingServices) {
+    const defaultServices = {
+      badge: 'OUR SERVICES',
+      title: 'More than',
+      titleHighlight: 'just motors.',
+      subtitle: 'BlueWave is built to support customers before, during and after the purchase.',
+      serviceCards: [
+        {
+          id: 'sales',
+          title: 'OUTBOARD SALES',
+          desc: 'New and used motors across popular power classes.',
+          image: '/src/assets/images/mercury_offshore_motor_1791036614640.jpg',
+          actionText: 'View Available Classes',
+          actionPage: 'shop',
+          bullets: [
+            'New & certified pre-owned selections',
+            '2.5 HP portables to 300+ HP V8 outboards',
+            'Repower consultations for existing hulls',
+          ],
+        },
+        {
+          id: 'service',
+          title: 'SERVICE & REPAIRS',
+          desc: 'Maintenance and repair support can be arranged for customers.',
+          image: '/src/assets/images/service_outboard_engine_1791036551185.jpg',
+          actionText: 'Inquire About Service',
+          actionPage: 'contact',
+          bullets: [
+            '100-hour & seasonal service coordination',
+            'Computer diagnostic testing & health reports',
+            'Lower unit fluid, water pump & impeller renewal',
+          ],
+        },
+        {
+          id: 'parts',
+          title: 'PARTS & ACCESSORIES',
+          desc: 'Ask us about compatible controls, props, rigging, and accessories.',
+          image: '/src/assets/images/parts_propellers_rigging_1791036562604.jpg',
+          actionText: 'Request Parts / Rigging',
+          actionPage: 'order',
+          bullets: [
+            'Stainless steel & aluminum propellers',
+            'Digital command link gauges & harnesses',
+            'Side-mount & top-mount binnacle controls',
+          ],
+        },
+      ],
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'services',
+      JSON.stringify(defaultServices),
+      new Date().toISOString()
+    );
   }
 }

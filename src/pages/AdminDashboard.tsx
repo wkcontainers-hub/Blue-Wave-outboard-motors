@@ -30,6 +30,7 @@ import {
   Shield,
   RefreshCw,
   FileCheck,
+  Layers,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
@@ -47,6 +48,7 @@ type AdminTab =
   | 'inbox'
   | 'support'
   | 'payments'
+  | 'edit_pages'
   | 'payment_settings'
   | 'business_settings';
 
@@ -54,8 +56,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const {
     motors,
     businessInfo,
+    pagesContent,
     refreshProducts,
     refreshBusinessInfo,
+    refreshPagesContent,
+    updatePageContent,
     addMotor,
     updateMotor,
     deleteMotor,
@@ -134,6 +139,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Business Settings State
   const [bizForm, setBizForm] = useState<any>({ ...businessInfo });
   const [bizSaved, setBizSaved] = useState(false);
+
+  // Edit Pages State
+  const [selectedPageToEdit, setSelectedPageToEdit] = useState<'home' | 'about' | 'services'>('home');
+  const [homeForm, setHomeForm] = useState<any>(pagesContent.home);
+  const [aboutForm, setAboutForm] = useState<any>(pagesContent.about);
+  const [servicesForm, setServicesForm] = useState<any>(pagesContent.services);
+  const [isSavingPage, setIsSavingPage] = useState(false);
+  const [pageSaveSuccess, setPageSaveSuccess] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    if (pagesContent.home) setHomeForm(pagesContent.home);
+    if (pagesContent.about) setAboutForm(pagesContent.about);
+    if (pagesContent.services) setServicesForm(pagesContent.services);
+  }, [pagesContent]);
+
+  const uploadPageImage = async (file: File): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        try {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            resolve(data.url);
+          } else {
+            resolve(base64);
+          }
+        } catch {
+          resolve(base64);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSaveCurrentPage = async () => {
+    setIsSavingPage(true);
+    setPageSaveSuccess(null);
+    let contentToSave;
+    if (selectedPageToEdit === 'home') contentToSave = homeForm;
+    else if (selectedPageToEdit === 'about') contentToSave = aboutForm;
+    else contentToSave = servicesForm;
+
+    const res = await updatePageContent(selectedPageToEdit, contentToSave);
+    setIsSavingPage(false);
+    if (res.success) {
+      setPageSaveSuccess(`✓ Successfully published! The ${selectedPageToEdit.toUpperCase()} page is now live and persistent in the database.`);
+      setTimeout(() => setPageSaveSuccess(null), 5000);
+    } else {
+      alert(`Error saving page: ${res.error || 'Unknown error'}`);
+    }
+  };
 
   // Helper for auth headers
   const getHeaders = () => ({
@@ -510,6 +573,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
             { id: 'products', label: `Products (${motors.length})`, icon: Package },
             { id: 'orders', label: `Orders (${orders.length})`, icon: ShoppingCart },
             { id: 'payments', label: `Payment Verification (${paymentReceipts.filter((r) => r.status === 'Awaiting Verification').length})`, icon: FileCheck },
+            { id: 'edit_pages', label: 'Edit Pages', icon: Layers },
             { id: 'inbox', label: `Inbox (${inboxMessages.filter((m) => m.status === 'UNREAD').length})`, icon: Inbox },
             { id: 'support', label: `Support Tickets (${supportTickets.filter((t) => t.status === 'OPEN').length})`, icon: HelpCircle },
             { id: 'customers', label: `Customers (${customers.length})`, icon: Users },
@@ -1513,6 +1577,798 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
           </div>
         )}
 
+        {/* ======================================================== */}
+        {/* TAB: EDIT PAGES (HOME, ABOUT US, SERVICES) */}
+        {/* ======================================================== */}
+        {activeTab === 'edit_pages' && (
+          <div className="space-y-8">
+            {/* Top Bar with Page Selector and Actions */}
+            <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-mono font-bold text-[#0088FF] uppercase tracking-wider block mb-1">
+                  WEBSITE CONTENT MANAGEMENT
+                </span>
+                <h2 className="text-2xl font-black text-white font-['Cabinet_Grotesk']">
+                  Edit Website Pages
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Customize headings, text descriptions, call-to-actions, and ultra-realistic photography. Changes persist permanently in the database.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="px-4 py-2.5 rounded-lg bg-[#060D17] hover:bg-[#102135] text-slate-200 hover:text-white text-xs font-bold border border-white/10 hover:border-[#0088FF]/50 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <Eye className="w-4 h-4 text-[#0088FF]" />
+                  <span>Preview Changes</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSavingPage}
+                  onClick={handleSaveCurrentPage}
+                  className="px-5 py-2.5 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-[#0088FF]/30 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingPage ? 'Publishing...' : 'Save & Publish Changes'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Success notification */}
+            {pageSaveSuccess && (
+              <div className="p-4 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="font-semibold">{pageSaveSuccess}</span>
+              </div>
+            )}
+
+            {/* Page Sub-Tabs (Home, About Us, Services) */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+              {[
+                { id: 'home', label: 'Home Page' },
+                { id: 'about', label: 'About Us Page' },
+                { id: 'services', label: 'Services Page' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPageToEdit(p.id as any)}
+                  className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+                    selectedPageToEdit === p.id
+                      ? 'bg-[#0088FF] text-white shadow-md shadow-[#0088FF]/20'
+                      : 'bg-[#0B1826] text-slate-400 hover:text-white border border-white/5 hover:border-white/15'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ---------------------------------------------------- */}
+            {/* 1. HOME PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'home' && homeForm && (
+              <div className="space-y-6">
+                {/* Hero Section Card */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF] flex items-center gap-2">
+                    <span>1. Hero Banner &amp; Primary Call-to-Action</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Small Top Badge</label>
+                      <input
+                        type="text"
+                        value={homeForm.heroBadge || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, heroBadge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={homeForm.heroTitle || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, heroTitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight (Gradient Blue)</label>
+                      <input
+                        type="text"
+                        value={homeForm.heroHighlight || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, heroHighlight: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Primary Button</label>
+                        <input
+                          type="text"
+                          value={homeForm.primaryCtaText || ''}
+                          onChange={(e) => setHomeForm({ ...homeForm, primaryCtaText: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Secondary Button</label>
+                        <input
+                          type="text"
+                          value={homeForm.secondaryCtaText || ''}
+                          onChange={(e) => setHomeForm({ ...homeForm, secondaryCtaText: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Hero Supporting Text / Subtitle</label>
+                    <textarea
+                      rows={2}
+                      value={homeForm.heroSubtitle || ''}
+                      onChange={(e) => setHomeForm({ ...homeForm, heroSubtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+
+                  {/* Hero Background Image */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Hero Background Image</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="relative w-48 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                        <img
+                          src={homeForm.heroImage}
+                          alt="Hero background"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/src/assets/images/hero_outboard_boat_1791036528701.jpg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 w-full space-y-2">
+                        <input
+                          type="text"
+                          value={homeForm.heroImage || ''}
+                          onChange={(e) => setHomeForm({ ...homeForm, heroImage: e.target.value })}
+                          placeholder="Image URL or local asset path..."
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                        />
+                        <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Replacement Hero Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const url = await uploadPageImage(file);
+                                if (url) setHomeForm({ ...homeForm, heroImage: url });
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature Points Bar */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    2. Feature Highlights Strip (4 Highlights)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {(homeForm.featurePoints || []).map((pt: any, idx: number) => (
+                      <div key={idx} className="p-3.5 rounded-xl bg-[#060D17] border border-white/5 space-y-2">
+                        <span className="text-[10px] font-mono text-[#0088FF] uppercase block">Item #{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={pt.title}
+                          onChange={(e) => {
+                            const updated = [...homeForm.featurePoints];
+                            updated[idx] = { ...updated[idx], title: e.target.value };
+                            setHomeForm({ ...homeForm, featurePoints: updated });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded bg-[#0B1826] border border-white/10 text-white text-xs font-bold"
+                          placeholder="Title"
+                        />
+                        <input
+                          type="text"
+                          value={pt.subtitle}
+                          onChange={(e) => {
+                            const updated = [...homeForm.featurePoints];
+                            updated[idx] = { ...updated[idx], subtitle: e.target.value };
+                            setHomeForm({ ...homeForm, featurePoints: updated });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded bg-[#0B1826] border border-white/10 text-slate-300 text-xs"
+                          placeholder="Subtitle"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Commitment Section */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    3. The BlueWave Commitment Section
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Badge</label>
+                      <input
+                        type="text"
+                        value={homeForm.commitmentBadge || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, commitmentBadge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={homeForm.commitmentTitle || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, commitmentTitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Highlight</label>
+                      <input
+                        type="text"
+                        value={homeForm.commitmentHighlight || ''}
+                        onChange={(e) => setHomeForm({ ...homeForm, commitmentHighlight: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Commitment Statement</label>
+                    <textarea
+                      rows={3}
+                      value={homeForm.commitmentText || ''}
+                      onChange={(e) => setHomeForm({ ...homeForm, commitmentText: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+                </div>
+
+                {/* In-Demand Repower Showcase Card */}
+                {homeForm.repowerCard && (
+                  <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                      4. In-Demand Repower Showcase Card
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Tag</label>
+                        <input
+                          type="text"
+                          value={homeForm.repowerCard.tag || ''}
+                          onChange={(e) =>
+                            setHomeForm({
+                              ...homeForm,
+                              repowerCard: { ...homeForm.repowerCard, tag: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Power Range</label>
+                        <input
+                          type="text"
+                          value={homeForm.repowerCard.powerRange || ''}
+                          onChange={(e) =>
+                            setHomeForm({
+                              ...homeForm,
+                              repowerCard: { ...homeForm.repowerCard, powerRange: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">Card CTA Label</label>
+                        <input
+                          type="text"
+                          value={homeForm.repowerCard.ctaText || ''}
+                          onChange={(e) =>
+                            setHomeForm({
+                              ...homeForm,
+                              repowerCard: { ...homeForm.repowerCard, ctaText: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Card Title</label>
+                      <input
+                        type="text"
+                        value={homeForm.repowerCard.title || ''}
+                        onChange={(e) =>
+                          setHomeForm({
+                            ...homeForm,
+                            repowerCard: { ...homeForm.repowerCard, title: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Card Description</label>
+                      <textarea
+                        rows={2}
+                        value={homeForm.repowerCard.desc || ''}
+                        onChange={(e) =>
+                          setHomeForm({
+                            ...homeForm,
+                            repowerCard: { ...homeForm.repowerCard, desc: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Card Photograph</label>
+                      <div className="flex flex-col sm:flex-row gap-4 items-start">
+                        <div className="relative w-40 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                          <img
+                            src={homeForm.repowerCard.image}
+                            alt="Repower motor"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 w-full space-y-2">
+                          <input
+                            type="text"
+                            value={homeForm.repowerCard.image || ''}
+                            onChange={(e) =>
+                              setHomeForm({
+                                ...homeForm,
+                                repowerCard: { ...homeForm.repowerCard, image: e.target.value },
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                          />
+                          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload Replacement Photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url)
+                                    setHomeForm({
+                                      ...homeForm,
+                                      repowerCard: { ...homeForm.repowerCard, image: url },
+                                    });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* 2. ABOUT US PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'about' && aboutForm && (
+              <div className="space-y-6">
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    About Us Main Content &amp; Headlines
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Top Badge</label>
+                      <input
+                        type="text"
+                        value={aboutForm.badge || ''}
+                        onChange={(e) => setAboutForm({ ...aboutForm, badge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={aboutForm.title || ''}
+                        onChange={(e) => setAboutForm({ ...aboutForm, title: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight</label>
+                      <input
+                        type="text"
+                        value={aboutForm.titleHighlight || ''}
+                        onChange={(e) => setAboutForm({ ...aboutForm, titleHighlight: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Intro Subtitle</label>
+                      <textarea
+                        rows={2}
+                        value={aboutForm.subtitle || ''}
+                        onChange={(e) => setAboutForm({ ...aboutForm, subtitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">CTA Button Label</label>
+                      <input
+                        type="text"
+                        value={aboutForm.ctaText || ''}
+                        onChange={(e) => setAboutForm({ ...aboutForm, ctaText: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bullet Points */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-2">Dealership Value Points (4 Bullets)</label>
+                    <div className="space-y-2">
+                      {(aboutForm.bullets || []).map((bullet: string, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="w-5 text-center text-xs font-mono text-slate-400">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={bullet}
+                            onChange={(e) => {
+                              const updated = [...aboutForm.bullets];
+                              updated[idx] = e.target.value;
+                              setAboutForm({ ...aboutForm, bullets: updated });
+                            }}
+                            className="flex-1 px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Main Showcase Outboard Photo */}
+                  <div className="pt-4 border-t border-white/10">
+                    <label className="block text-xs font-semibold text-slate-300 mb-2">Main Showcase Outboard Photograph</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="relative w-48 h-36 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                        <img
+                          src={aboutForm.image}
+                          alt="About showcase"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 w-full space-y-3">
+                        <input
+                          type="text"
+                          value={aboutForm.image || ''}
+                          onChange={(e) => setAboutForm({ ...aboutForm, image: e.target.value })}
+                          placeholder="Image URL or local path..."
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                        />
+                        <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Replacement Photograph</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const url = await uploadPageImage(file);
+                                if (url) setAboutForm({ ...aboutForm, image: url });
+                              }
+                            }}
+                          />
+                        </label>
+
+                        {/* Overlay Badge texts */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                          <div>
+                            <label className="block text-[10px] text-slate-400">Badge Title</label>
+                            <input
+                              type="text"
+                              value={aboutForm.badgeOverlayTitle || ''}
+                              onChange={(e) => setAboutForm({ ...aboutForm, badgeOverlayTitle: e.target.value })}
+                              className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-white text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400">Badge Subtitle</label>
+                            <input
+                              type="text"
+                              value={aboutForm.badgeOverlayDesc || ''}
+                              onChange={(e) => setAboutForm({ ...aboutForm, badgeOverlayDesc: e.target.value })}
+                              className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-white text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400">Badge Tag</label>
+                            <input
+                              type="text"
+                              value={aboutForm.badgeOverlayTag || ''}
+                              onChange={(e) => setAboutForm({ ...aboutForm, badgeOverlayTag: e.target.value })}
+                              className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* 3. SERVICES PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'services' && servicesForm && (
+              <div className="space-y-6">
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Services Page Header
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Top Badge</label>
+                      <input
+                        type="text"
+                        value={servicesForm.badge || ''}
+                        onChange={(e) => setServicesForm({ ...servicesForm, badge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={servicesForm.title || ''}
+                        onChange={(e) => setServicesForm({ ...servicesForm, title: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight</label>
+                      <input
+                        type="text"
+                        value={servicesForm.titleHighlight || ''}
+                        onChange={(e) => setServicesForm({ ...servicesForm, titleHighlight: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Header Subtitle</label>
+                    <textarea
+                      rows={2}
+                      value={servicesForm.subtitle || ''}
+                      onChange={(e) => setServicesForm({ ...servicesForm, subtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+                </div>
+
+                {/* 3 Service Cards */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    The 3 Dealership Service Offerings
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {(servicesForm.serviceCards || []).map((card: any, idx: number) => (
+                      <div key={card.id || idx} className="bg-[#0B1826] rounded-2xl p-5 border border-white/10 shadow-xl space-y-4 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-mono font-bold text-[#0088FF] uppercase block">
+                            Service Card #{idx + 1} ({card.id})
+                          </span>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Service Title</label>
+                            <input
+                              type="text"
+                              value={card.title}
+                              onChange={(e) => {
+                                const updated = [...servicesForm.serviceCards];
+                                updated[idx] = { ...updated[idx], title: e.target.value };
+                                setServicesForm({ ...servicesForm, serviceCards: updated });
+                              }}
+                              className="w-full px-3 py-1.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+                            <textarea
+                              rows={2}
+                              value={card.desc}
+                              onChange={(e) => {
+                                const updated = [...servicesForm.serviceCards];
+                                updated[idx] = { ...updated[idx], desc: e.target.value };
+                                setServicesForm({ ...servicesForm, serviceCards: updated });
+                              }}
+                              className="w-full px-3 py-1.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                            />
+                          </div>
+
+                          {/* Image preview & upload */}
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-300 mb-1">Service Photograph</label>
+                            <div className="relative aspect-[16/10] rounded-lg overflow-hidden border border-white/15 bg-black mb-2">
+                              <img
+                                src={card.image}
+                                alt={card.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/src/assets/images/service_outboard_engine_1791036551185.jpg';
+                                }}
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              value={card.image}
+                              onChange={(e) => {
+                                const updated = [...servicesForm.serviceCards];
+                                updated[idx] = { ...updated[idx], image: e.target.value };
+                                setServicesForm({ ...servicesForm, serviceCards: updated });
+                              }}
+                              className="w-full px-2.5 py-1 rounded bg-[#060D17] border border-white/10 text-white text-[11px] font-mono mb-2"
+                            />
+                            <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0E2034] hover:bg-[#0088FF] text-white text-[11px] font-semibold cursor-pointer transition-colors">
+                              <Upload className="w-3 h-3" />
+                              <span>Upload Card Photo</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const url = await uploadPageImage(file);
+                                    if (url) {
+                                      const updated = [...servicesForm.serviceCards];
+                                      updated[idx] = { ...updated[idx], image: url };
+                                      setServicesForm({ ...servicesForm, serviceCards: updated });
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {/* Action Button & Page */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-1">Action Button</label>
+                              <input
+                                type="text"
+                                value={card.actionText}
+                                onChange={(e) => {
+                                  const updated = [...servicesForm.serviceCards];
+                                  updated[idx] = { ...updated[idx], actionText: e.target.value };
+                                  setServicesForm({ ...servicesForm, serviceCards: updated });
+                                }}
+                                className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-white text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-1">Target Page</label>
+                              <select
+                                value={card.actionPage || 'shop'}
+                                onChange={(e) => {
+                                  const updated = [...servicesForm.serviceCards];
+                                  updated[idx] = { ...updated[idx], actionPage: e.target.value };
+                                  setServicesForm({ ...servicesForm, serviceCards: updated });
+                                }}
+                                className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-white text-xs"
+                              >
+                                <option value="shop">Shop</option>
+                                <option value="contact">Contact</option>
+                                <option value="order">Order Request</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Bullets */}
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-300 mb-1">Key Bullets (3 items)</label>
+                            <div className="space-y-1.5">
+                              {(card.bullets || []).map((b: string, bIdx: number) => (
+                                <input
+                                  key={bIdx}
+                                  type="text"
+                                  value={b}
+                                  onChange={(e) => {
+                                    const updated = [...servicesForm.serviceCards];
+                                    const cardBullets = [...updated[idx].bullets];
+                                    cardBullets[bIdx] = e.target.value;
+                                    updated[idx] = { ...updated[idx], bullets: cardBullets };
+                                    setServicesForm({ ...servicesForm, serviceCards: updated });
+                                  }}
+                                  className="w-full px-2 py-1 rounded bg-[#060D17] border border-white/10 text-slate-200 text-xs"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Floating Save Button Bar */}
+            <div className="sticky bottom-4 z-20 bg-[#0B1826]/95 backdrop-blur-md p-4 rounded-xl border border-white/15 shadow-2xl flex items-center justify-between">
+              <div className="text-xs text-slate-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#0088FF] animate-pulse"></span>
+                <span>Editing: <strong className="text-white uppercase">{selectedPageToEdit} Page</strong></span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <Eye className="w-3.5 h-3.5 text-[#0088FF]" />
+                  <span>Preview</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingPage}
+                  onClick={handleSaveCurrentPage}
+                  className="px-6 py-2 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-[#0088FF]/30 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingPage ? 'Publishing...' : 'Save & Publish Changes'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* ======================================================== */}
@@ -1832,6 +2688,246 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: LIVE PAGE PREVIEW */}
+      {/* ======================================================== */}
+      {isPreviewOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90 backdrop-blur-md flex flex-col p-2 sm:p-6 animate-in fade-in duration-200">
+          <div className="max-w-6xl w-full mx-auto bg-[#050B14] rounded-2xl border border-white/20 shadow-2xl overflow-hidden flex flex-col my-auto">
+            {/* Preview Toolbar */}
+            <div className="bg-[#0B1826] px-6 py-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div>
+                  <h4 className="text-sm font-bold text-white font-['Cabinet_Grotesk']">
+                    Live Preview: <span className="text-[#0088FF] uppercase">{selectedPageToEdit} Page</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Previewing unsaved draft state before publishing to database
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex bg-[#060D17] rounded-lg p-0.5 border border-white/10">
+                  {(['home', 'about', 'services'] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setSelectedPageToEdit(p)}
+                      className={`px-3 py-1 rounded text-xs font-bold capitalize transition-colors ${
+                        selectedPageToEdit === p
+                          ? 'bg-[#0088FF] text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleSaveCurrentPage();
+                    setIsPreviewOpen(false);
+                  }}
+                  className="px-4 py-1.5 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Publish</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview Content Area */}
+            <div className="max-h-[80vh] overflow-y-auto p-4 sm:p-8 bg-[#050B14]">
+              {selectedPageToEdit === 'home' && homeForm && (
+                <div className="space-y-8">
+                  {/* Hero preview */}
+                  <div className="relative rounded-2xl overflow-hidden min-h-[380px] flex items-center p-8 bg-[#050B14] border border-white/10">
+                    <img
+                      src={homeForm.heroImage}
+                      alt="Hero preview"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/src/assets/images/hero_outboard_boat_1791036528701.jpg';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050B14] via-[#050B14]/85 to-[#050B14]/65" />
+                    <div className="relative z-10 max-w-xl text-left">
+                      <span className="text-xs font-bold text-[#0088FF] uppercase tracking-[0.2em] block mb-2">
+                        {homeForm.heroBadge}
+                      </span>
+                      <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight mb-3 font-['Cabinet_Grotesk']">
+                        {homeForm.heroTitle}{' '}
+                        <span className="text-[#0099FF]">{homeForm.heroHighlight}</span>
+                      </h1>
+                      <p className="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
+                        {homeForm.heroSubtitle}
+                      </p>
+                      <div className="flex gap-3">
+                        <button className="px-5 py-2.5 rounded-lg bg-[#0088FF] text-white text-xs font-bold uppercase tracking-wider">
+                          {homeForm.primaryCtaText}
+                        </button>
+                        <button className="px-5 py-2.5 rounded-lg bg-[#0B1826] border border-white/10 text-white text-xs font-bold">
+                          {homeForm.secondaryCtaText}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature points preview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-[#081320] border border-white/5">
+                    {(homeForm.featurePoints || []).map((pt: any, idx: number) => (
+                      <div key={idx} className="p-2">
+                        <h4 className="text-xs font-bold uppercase text-white font-['Cabinet_Grotesk']">{pt.title}</h4>
+                        <p className="text-[11px] text-slate-400">{pt.subtitle}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Commitment preview */}
+                  <div className="p-6 rounded-2xl bg-[#0B1826] border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div>
+                      <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                        {homeForm.commitmentBadge}
+                      </span>
+                      <h3 className="text-xl font-black text-white mb-3 font-['Cabinet_Grotesk']">
+                        {homeForm.commitmentTitle} <span className="text-[#0099FF]">{homeForm.commitmentHighlight}</span>
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed">{homeForm.commitmentText}</p>
+                    </div>
+                    {homeForm.repowerCard && (
+                      <div className="rounded-xl overflow-hidden bg-[#060D17] border border-white/10 p-4 flex gap-4 items-center">
+                        <img
+                          src={homeForm.repowerCard.image}
+                          alt=""
+                          className="w-24 h-20 rounded-lg object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
+                          }}
+                        />
+                        <div>
+                          <span className="text-[10px] text-[#0088FF] font-mono font-bold uppercase block">
+                            {homeForm.repowerCard.tag} ({homeForm.repowerCard.powerRange})
+                          </span>
+                          <h4 className="text-xs font-bold text-white mb-1 font-['Cabinet_Grotesk']">
+                            {homeForm.repowerCard.title}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 line-clamp-2">{homeForm.repowerCard.desc}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedPageToEdit === 'about' && aboutForm && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 rounded-2xl bg-[#0B1826] border border-white/10">
+                    <div>
+                      <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                        {aboutForm.badge}
+                      </span>
+                      <h2 className="text-3xl font-black text-white mb-3 font-['Cabinet_Grotesk']">
+                        {aboutForm.title} <span className="text-[#0099FF]">{aboutForm.titleHighlight}</span>
+                      </h2>
+                      <p className="text-xs text-slate-300 leading-relaxed mb-4">{aboutForm.subtitle}</p>
+                      <div className="space-y-2 mb-6">
+                        {(aboutForm.bullets || []).map((b: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#0088FF]"></span>
+                            <span>{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button className="px-5 py-2.5 rounded-lg bg-[#0088FF] text-white text-xs font-bold">
+                        {aboutForm.ctaText}
+                      </button>
+                    </div>
+
+                    <div className="relative rounded-xl overflow-hidden aspect-[4/3] border border-white/10">
+                      <img
+                        src={aboutForm.image}
+                        alt="About preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
+                        }}
+                      />
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur-md p-3 rounded-lg border border-white/10 flex justify-between items-center text-xs">
+                        <div>
+                          <strong className="text-white block">{aboutForm.badgeOverlayTitle}</strong>
+                          <span className="text-[10px] text-slate-300">{aboutForm.badgeOverlayDesc}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-[#0088FF] bg-[#0088FF]/15 px-2 py-0.5 rounded">
+                          {aboutForm.badgeOverlayTag}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedPageToEdit === 'services' && servicesForm && (
+                <div className="space-y-6">
+                  <div className="text-center max-w-xl mx-auto mb-6">
+                    <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                      {servicesForm.badge}
+                    </span>
+                    <h2 className="text-2xl font-black text-white mb-2 font-['Cabinet_Grotesk']">
+                      {servicesForm.title} <span className="text-[#0099FF]">{servicesForm.titleHighlight}</span>
+                    </h2>
+                    <p className="text-xs text-slate-300">{servicesForm.subtitle}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {(servicesForm.serviceCards || []).map((card: any, idx: number) => (
+                      <div key={idx} className="rounded-xl overflow-hidden bg-[#0B1826] border border-white/10 flex flex-col">
+                        <div className="aspect-[16/10] overflow-hidden bg-[#060D17]">
+                          <img
+                            src={card.image}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/src/assets/images/service_outboard_engine_1791036551185.jpg';
+                            }}
+                          />
+                        </div>
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 font-['Cabinet_Grotesk']">
+                              {card.title}
+                            </h3>
+                            <p className="text-xs text-slate-300 mb-3">{card.desc}</p>
+                            <ul className="space-y-1 mb-4 text-[11px] text-slate-400">
+                              {(card.bullets || []).map((b: string, bIdx: number) => (
+                                <li key={bIdx}>&bull; {b}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <span className="text-xs font-bold text-[#0088FF] uppercase">
+                            {card.actionText} &rarr;
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

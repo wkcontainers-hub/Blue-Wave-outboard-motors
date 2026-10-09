@@ -36,6 +36,7 @@ function MainApp() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCustomerAuthOpen, setIsCustomerAuthOpen] = useState(false);
+  const [customerAuthMode, setCustomerAuthMode] = useState<'login' | 'register'>('login');
 
   // Sync hash routing so back/forward buttons, direct links, and #admin work
   useEffect(() => {
@@ -110,7 +111,10 @@ function MainApp() {
           currentPage={currentPage}
           onNavigate={handleNavigate}
           onOpenCart={() => setIsCartOpen(true)}
-          onOpenAuth={() => setIsCustomerAuthOpen(true)}
+          onOpenAuth={(mode) => {
+            setCustomerAuthMode(mode || 'login');
+            setIsCustomerAuthOpen(true);
+          }}
         />
       )}
 
@@ -128,7 +132,10 @@ function MainApp() {
         {currentPage === 'account' && (
           <MyAccountPage
             onNavigate={handleNavigate}
-            onOpenAuth={() => setIsCustomerAuthOpen(true)}
+            onOpenAuth={() => {
+              setCustomerAuthMode('login');
+              setIsCustomerAuthOpen(true);
+            }}
           />
         )}
         {currentPage === 'admin' && (
@@ -150,7 +157,14 @@ function MainApp() {
 
       {/* Persistent Dealer Footer (On public pages) */}
       {currentPage !== 'admin' && (
-        <Footer onNavigate={handleNavigate} onOpenAdminLogin={handleOpenAdminLogin} />
+        <Footer
+          onNavigate={handleNavigate}
+          onOpenAdminLogin={handleOpenAdminLogin}
+          onOpenCustomerAuth={(mode) => {
+            setCustomerAuthMode(mode);
+            setIsCustomerAuthOpen(true);
+          }}
+        />
       )}
 
       {/* Cart Drawer */}
@@ -164,6 +178,7 @@ function MainApp() {
       <CustomerAuthModal
         isOpen={isCustomerAuthOpen}
         onClose={() => setIsCustomerAuthOpen(false)}
+        defaultMode={customerAuthMode}
         onSuccess={() => handleNavigate('account')}
       />
 

@@ -16,6 +16,12 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+  // Static folders for images and user uploads
+  app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
+  app.use('/src/assets/images', express.static(path.resolve(__dirname, 'src/assets/images')));
+  app.use('/assets/images', express.static(path.resolve(__dirname, 'public/assets/images')));
+  app.use('/images', express.static(path.resolve(__dirname, 'public/images')));
+
   // Initialize SQLite database & seed records
   initDatabase();
   console.log('✓ SQLite database initialized successfully');

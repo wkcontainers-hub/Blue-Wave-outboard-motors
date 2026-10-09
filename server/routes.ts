@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { db, hashPassword, verifyPassword, createSession, getSession, removeSession } from './db.ts';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const apiRouter = Router();
 
@@ -1085,3 +1087,83 @@ apiRouter.get('/admin/customers', requireAdmin, (_req, res) => {
 
   res.json(rows);
 });
+
+// ----------------------------------------------------
+// 9. PAGE CONTENT & IMAGE UPLOAD MANAGEMENT (EDIT PAGES)
+// ----------------------------------------------------
+
+apiRouter.get('/pages', (_req, res) => {
+  const rows = db.prepare('SELECT page_id, data_json FROM page_content').all() as any[];
+  const result: Record<string, any> = {};
+  for (const r of rows) {
+    try {
+      result[r.page_id] = JSON.parse(r.data_json);
+    } catch {
+      result[r.page_id] = {};
+    }
+  }
+  res.json(result);
+});
+
+apiRouter.get('/pages/:pageId', (req, res) => {
+  const row = db.prepare('SELECT data_json FROM page_content WHERE page_id = ?').get(req.params.pageId) as any;
+  if (!row) {
+    return res.status(404).json({ error: 'Page content not found' });
+  }
+  try {
+    res.json(JSON.parse(row.data_json));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to parse page content' });
+  }
+});
+
+apiRouter.put('/pages/:pageId', requireAdmin, (req, res) => {
+  const { pageId } = req.params;
+  const content = req.body;
+  if (!content || typeof content !== 'object') {
+    return res.status(400).json({ error: 'Invalid page content object' });
+  }
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO page_content (page_id, data_json, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(page_id) DO UPDATE SET
+      data_json = excluded.data_json,
+      updated_at = excluded.updated_at
+  `).run(pageId, JSON.stringify(content), now);
+
+  res.json({ success: true, message: `Page '${pageId}' updated and published successfully` });
+});
+
+apiRouter.post('/upload', (req, res) => {
+  const { image } = req.body;
+  if (!image) {
+    return res.status(400).json({ error: 'No image data provided' });
+  }
+
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  if (typeof image === 'string' && image.startsWith('data:image/')) {
+    const matches = image.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: 'Invalid base64 image data' });
+    }
+    const rawExt = matches[1].toLowerCase();
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : rawExt;
+    const buffer = Buffer.from(matches[2], 'base64');
+    const safeName = `img_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    const filePath = path.join(uploadsDir, safeName);
+    fs.writeFileSync(filePath, buffer);
+    return res.json({ url: `/uploads/${safeName}`, success: true });
+  }
+
+  if (typeof image === 'string' && (image.startsWith('http') || image.startsWith('/'))) {
+    return res.json({ url: image, success: true });
+  }
+
+  return res.status(400).json({ error: 'Unsupported image format' });
+});
+

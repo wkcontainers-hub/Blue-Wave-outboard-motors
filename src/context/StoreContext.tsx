@@ -34,6 +34,104 @@ const DEFAULT_BUSINESS_INFO: BusinessInfo = {
   websiteUrl: 'https://bluewaveoutboards.com',
 };
 
+export const DEFAULT_PAGE_CONTENT = {
+  home: {
+    heroBadge: 'MARINE POWER SPECIALISTS',
+    heroTitle: 'POWER YOUR',
+    heroHighlight: 'NEXT ADVENTURE.',
+    heroSubtitle: 'New and used outboard motors for boat owners, anglers, and commercial operators. Sales, service, parts and delivery — all in one place.',
+    heroImage: '/src/assets/images/hero_outboard_boat_1791036528701.jpg',
+    primaryCtaText: 'SHOP OUTBOARDS',
+    secondaryCtaText: 'REQUEST A MOTOR',
+    commitmentBadge: 'THE BLUEWAVE COMMITMENT',
+    commitmentTitle: 'Precision Outboard Power,',
+    commitmentHighlight: 'Backed by Marine Experts.',
+    commitmentText: 'Whether you need a lightweight portable 4-stroke for your tender, a rugged inline engine for your bay boat, or high-output multi-engine power for offshore tournaments, BlueWave Outboard Motors delivers genuine reliability, honest consultations, and seamless procurement.',
+    featurePoints: [
+      { title: 'NEW & USED MOTORS', subtitle: 'Top-tier brands & sizes' },
+      { title: 'SALES & SERVICE', subtitle: 'Factory-trained marine care' },
+      { title: 'PARTS & ACCESSORIES', subtitle: 'Controls, rigging & props' },
+      { title: 'DELIVERY AVAILABLE', subtitle: 'Direct to dock or freight' },
+    ],
+    repowerCard: {
+      tag: 'IN-DEMAND REPOWER',
+      powerRange: '115 – 300+ HP',
+      title: 'Looking to repower your current hull?',
+      desc: 'Share your current boat transom height, steering setup, and performance goals. We match you with the optimal motor class.',
+      image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+      ctaText: 'Request Repower Quote',
+    },
+  },
+  about: {
+    badge: 'ABOUT BLUEWAVE',
+    title: 'Built around',
+    titleHighlight: 'life on the water.',
+    subtitle: 'BlueWave Outboard Motors is a marine-focused business designed to make finding the right outboard motor simple and straightforward.',
+    image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+    badgeOverlayTitle: 'Dealership Verified Quality',
+    badgeOverlayDesc: 'Inspected, compression-tested, and ready for water.',
+    badgeOverlayTag: 'BLUEWAVE SPEC',
+    ctaText: 'Talk to BlueWave',
+    bullets: [
+      'New and used outboard motor sourcing',
+      'Popular brands and horsepower classes',
+      'Service, parts and accessories support',
+      'Delivery options for customers',
+    ],
+    storyParagraph1: 'Founded with a pure passion for marine mechanics and blue-water performance, BlueWave Outboard Motors was established to provide boaters with an honest, transparent, and technically competent dealership experience.',
+    storyParagraph2: 'From lightweight dinghy portables to multi-engine offshore tournament setups, every motor in our inventory undergoes extensive multi-point inspection, compression verification, and run testing.',
+  },
+  services: {
+    badge: 'OUR SERVICES',
+    title: 'More than',
+    titleHighlight: 'just motors.',
+    subtitle: 'BlueWave is built to support customers before, during and after the purchase.',
+    serviceCards: [
+      {
+        id: 'sales',
+        title: 'OUTBOARD SALES',
+        desc: 'New and used motors across popular power classes.',
+        image: '/src/assets/images/mercury_offshore_motor_1791036614640.jpg',
+        actionText: 'View Available Classes',
+        actionPage: 'shop',
+        bullets: [
+          'New & certified pre-owned selections',
+          '2.5 HP portables to 300+ HP V8 outboards',
+          'Repower consultations for existing hulls',
+        ],
+      },
+      {
+        id: 'service',
+        title: 'SERVICE & REPAIRS',
+        desc: 'Maintenance and repair support can be arranged for customers.',
+        image: '/src/assets/images/service_outboard_engine_1791036551185.jpg',
+        actionText: 'Inquire About Service',
+        actionPage: 'contact',
+        bullets: [
+          '100-hour & seasonal service coordination',
+          'Computer diagnostic testing & health reports',
+          'Lower unit fluid, water pump & impeller renewal',
+        ],
+      },
+      {
+        id: 'parts',
+        title: 'PARTS & ACCESSORIES',
+        desc: 'Ask us about compatible controls, props, rigging, and accessories.',
+        image: '/src/assets/images/parts_propellers_rigging_1791036562604.jpg',
+        actionText: 'Request Parts / Rigging',
+        actionPage: 'order',
+        bullets: [
+          'Stainless steel & aluminum propellers',
+          'Digital command link gauges & harnesses',
+          'Side-mount & top-mount binnacle controls',
+        ],
+      },
+    ],
+  },
+};
+
+export type PagesContent = typeof DEFAULT_PAGE_CONTENT;
+
 interface StoreContextType {
   businessInfo: BusinessInfo;
   motors: OutboardMotorListing[];
@@ -49,6 +147,9 @@ interface StoreContextType {
   isAdminLoggedIn: boolean;
   isCustomer: boolean;
   paymentMethods: PaymentMethodConfig[];
+  pagesContent: PagesContent;
+  refreshPagesContent: () => Promise<void>;
+  updatePageContent: (pageId: 'home' | 'about' | 'services', content: any) => Promise<{ success: boolean; error?: string }>;
   addToCart: (motor: OutboardMotorListing, quantity?: number) => { success: boolean; error?: string };
   updateCartQty: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
@@ -79,6 +180,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('bw_token'));
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>([]);
+  const [pagesContent, setPagesContent] = useState<PagesContent>(DEFAULT_PAGE_CONTENT);
 
   // Auth headers helper
   const getAuthHeaders = useCallback(() => {
@@ -167,16 +269,56 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [getAuthHeaders]);
 
+  // Load page content from backend
+  const refreshPagesContent = useCallback(async () => {
+    try {
+      const res = await fetch('/api/pages');
+      if (res.ok) {
+        const data = await res.json();
+        setPagesContent((prev) => ({
+          home: data.home ? { ...prev.home, ...data.home } : prev.home,
+          about: data.about ? { ...prev.about, ...data.about } : prev.about,
+          services: data.services ? { ...prev.services, ...data.services } : prev.services,
+        }));
+      }
+    } catch (e) {
+      console.warn('Failed to load page content', e);
+    }
+  }, []);
+
+  const updatePageContent = async (pageId: 'home' | 'about' | 'services', content: any) => {
+    try {
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/pages/${pageId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(content),
+      });
+      if (res.ok) {
+        setPagesContent((prev) => ({
+          ...prev,
+          [pageId]: content,
+        }));
+        return { success: true };
+      }
+      const data = await res.json().catch(() => ({}));
+      return { success: false, error: data.error || 'Failed to update page content' };
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Network error' };
+    }
+  };
+
   // Initial load
   useEffect(() => {
     refreshBusinessInfo();
     refreshProducts();
     refreshPaymentMethods();
+    refreshPagesContent();
     if (authToken) {
       verifyAuth(authToken);
     }
     refreshCart();
-  }, [authToken, refreshBusinessInfo, refreshProducts, refreshPaymentMethods, verifyAuth, refreshCart]);
+  }, [authToken, refreshBusinessInfo, refreshProducts, refreshPaymentMethods, refreshPagesContent, verifyAuth, refreshCart]);
 
   // Sync cart changes to backend
   const syncCartToBackend = async (newItems: CartItem[]) => {
@@ -459,6 +601,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isAdminLoggedIn,
         isCustomer,
         paymentMethods,
+        pagesContent,
+        refreshPagesContent,
+        updatePageContent,
         addToCart,
         updateCartQty,
         removeFromCart,
