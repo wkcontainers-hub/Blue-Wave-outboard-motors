@@ -30,12 +30,21 @@ import { Order, CustomerMessage, SupportTicket } from '../types/inventory.ts';
 interface MyAccountPageProps {
   onNavigate: (page: PageId) => void;
   onOpenAuth: () => void;
+  initialTab?: 'profile' | 'orders' | 'cart' | 'messages' | 'support' | 'payments';
 }
 
-export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpenAuth }) => {
+export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpenAuth, initialTab }) => {
   const { currentUser, logout, updateProfile, cart, cartCount, cartTotal, formatMoney } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'cart' | 'messages' | 'support' | 'payments'>('orders');
+  const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'cart' | 'messages' | 'support' | 'payments'>(
+    initialTab || 'orders'
+  );
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Profile Form state
   const [fullName, setFullName] = useState(currentUser?.fullName || '');

@@ -19,9 +19,16 @@ interface HeaderProps {
   onNavigate: (page: PageId) => void;
   onOpenCart?: () => void;
   onOpenAuth?: (mode?: 'login' | 'register') => void;
+  onOpenAccountMenu?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onOpenCart, onOpenAuth }) => {
+export const Header: React.FC<HeaderProps> = ({
+  currentPage,
+  onNavigate,
+  onOpenCart,
+  onOpenAuth,
+  onOpenAccountMenu,
+}) => {
   const { isAdminLoggedIn, logoutAdmin, cartCount, currentUser } = useStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -172,7 +179,25 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onOpenC
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
-            {/* Mobile Menu Button */}
+            {/* Authenticated Customer Account Hamburger Menu (☰) in Top-Right Corner */}
+            {currentUser && onOpenAccountMenu && (
+              <button
+                id="bluewave-account-menu-button"
+                onClick={onOpenAccountMenu}
+                className="p-2 sm:px-2.5 sm:py-2 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-200 hover:text-white border border-white/10 hover:border-[#0088FF]/60 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer group"
+                aria-label="Open Account Menu"
+                title="Account Menu (☰)"
+              >
+                <span className="text-base font-bold leading-none select-none text-[#0088FF] group-hover:text-white transition-colors">
+                  &#9776;
+                </span>
+                <span className="hidden xl:inline text-xs font-semibold text-slate-300 group-hover:text-white">
+                  Menu
+                </span>
+              </button>
+            )}
+
+            {/* Mobile Navigation Menu Button (Public Navigation) */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/[0.06] transition-colors focus:outline-none"

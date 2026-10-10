@@ -216,6 +216,32 @@ export function initDatabase() {
     );
   `);
 
+  // Safely ensure tutorial_completed column exists on customer_profiles
+  try {
+    const colInfo = db.prepare("PRAGMA table_info(customer_profiles)").all() as any[];
+    const hasTutorialCol = colInfo.some((col: any) => col.name === 'tutorial_completed');
+    if (!hasTutorialCol) {
+      db.exec("ALTER TABLE customer_profiles ADD COLUMN tutorial_completed INTEGER DEFAULT 0;");
+    }
+  } catch (e) {
+    console.warn('Could not check or add tutorial_completed column:', e);
+  }
+
+  // Migrate any legacy /src/assets/images/ paths to standard production /images/
+  try {
+    db.exec(`
+      UPDATE products 
+      SET product_photos_json = REPLACE(product_photos_json, '/src/assets/images/', '/images/')
+      WHERE product_photos_json LIKE '%/src/assets/images/%';
+
+      UPDATE page_content 
+      SET data_json = REPLACE(data_json, '/src/assets/images/', '/images/')
+      WHERE data_json LIKE '%/src/assets/images/%';
+    `);
+  } catch (e) {
+    console.warn('Could not run image path migration:', e);
+  }
+
   // Seed default admin if not exists
   const existingAdmin = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
   if (!existingAdmin) {
@@ -339,8 +365,8 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 2,
         product_photos: [
-          '/src/assets/images/about_outboard_motor_1791036540139.jpg',
-          '/src/assets/images/hero_outboard_boat_1791036528701.jpg',
+          '/images/about_outboard_motor_1791036540139.jpg',
+          '/images/hero_outboard_boat_1791036528701.jpg',
         ],
         description: 'Brand new Yamaha 250 HP Offshore V6 with digital electric steering integration, high-output alternator, and factory 5-year marine warranty. Ideal for center consoles and bay boats.',
         specs: {
@@ -369,7 +395,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 3,
         product_photos: [
-          '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+          '/images/about_outboard_motor_1791036540139.jpg',
         ],
         description: 'Renowned for exceptional power-to-weight ratio, Suzuki lean burn control system, and offset driveshaft for superior balance. Perfect repower candidate for pontoons and flats skiffs.',
         specs: {
@@ -397,7 +423,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 1,
         product_photos: [
-          '/src/assets/images/mercury_offshore_motor_1791036614640.jpg',
+          '/images/mercury_offshore_motor_1791036614640.jpg',
         ],
         description: 'Flawless condition 4.6-liter naturally aspirated V8 Verado. Factory fresh compression test on all 8 cylinders, Advanced MidSection (AMS) vibration isolation, and SmartCraft digital gauge compatibility.',
         specs: {
@@ -425,7 +451,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 5,
         product_photos: [
-          '/src/assets/images/portable_outboard_motor_1791036573522.jpg',
+          '/images/portable_outboard_motor_1791036573522.jpg',
         ],
         description: 'Industry-first battery-less electronic fuel injection in a lightweight 9.9 HP chassis. Crisp throttle response, easy pull starting, built-in carry handle, and superior fuel economy for tenders.',
         specs: {
@@ -453,7 +479,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 1,
         product_photos: [
-          '/src/assets/images/used_outboard_inspection_1791036626286.jpg',
+          '/images/used_outboard_inspection_1791036626286.jpg',
         ],
         description: 'Equipped with Honda Intelligent Shift and Throttle (iST) and variable valve timing. Fully dealer-serviced at 100hr and 300hr milestones with fresh impeller and lower unit gear oil.',
         specs: {
@@ -480,7 +506,7 @@ export function initDatabase() {
         availability: 'Sold',
         stock_count: 0,
         product_photos: [
-          '/src/assets/images/service_outboard_engine_1791036551185.jpg',
+          '/images/service_outboard_engine_1791036551185.jpg',
         ],
         description: 'Recently sold unit. Compact 16-valve SOHC design. Outstanding shallow water performance with low engine hours and full diagnostic inspection printout.',
         specs: {
@@ -506,7 +532,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 2,
         product_photos: [
-          '/src/assets/images/mercury_offshore_motor_1791036614640.jpg',
+          '/images/mercury_offshore_motor_1791036614640.jpg',
         ],
         description: 'Class-leading 3.0L displacement producing unmatched low-end torque for quick planing and exceptional durability. Maintenance-free valve train for life.',
         specs: {
@@ -533,7 +559,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 1,
         product_photos: [
-          '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+          '/images/about_outboard_motor_1791036540139.jpg',
         ],
         description: 'Suzuki drive-by-wire electronic throttle and shift controls with selectable counter-rotation capability for multi-engine center consoles.',
         specs: {
@@ -560,7 +586,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 3,
         product_photos: [
-          '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+          '/images/about_outboard_motor_1791036540139.jpg',
         ],
         description: 'Versatile, lightweight power for bay boats, skiffs, runabouts, and inflatables. Excellent fuel economy with Yamaha Command Link digital gauge compatibility.',
         specs: {
@@ -587,7 +613,7 @@ export function initDatabase() {
         availability: 'Available',
         stock_count: 1,
         product_photos: [
-          '/src/assets/images/used_outboard_inspection_1791036626286.jpg',
+          '/images/used_outboard_inspection_1791036626286.jpg',
         ],
         description: 'Automotive-derived 2.4L powerplant with variable valve timing and lift. Only 84 gentle freshwater hours with complete dealer logbook inspection.',
         specs: {
@@ -637,16 +663,16 @@ export function initDatabase() {
   // Update existing products with authentic photorealistic motor photography
   try {
     const photoUpdates = [
-      { id: 'bw-mot-001', photos: ['/src/assets/images/yamaha_v6_offshore_1791559510414.jpg'] },
-      { id: 'bw-mot-002', photos: ['/src/assets/images/suzuki_df140_motor_1791559527791.jpg'] },
-      { id: 'bw-mot-003', photos: ['/src/assets/images/mercury_offshore_motor_1791036614640.jpg'] },
-      { id: 'bw-mot-004', photos: ['/src/assets/images/portable_outboard_motor_1791036573522.jpg'] },
-      { id: 'bw-mot-005', photos: ['/src/assets/images/honda_bf250_motor_1791559549672.jpg'] },
-      { id: 'bw-mot-006', photos: ['/src/assets/images/service_outboard_engine_1791036551185.jpg'] },
-      { id: 'bw-mot-007', photos: ['/src/assets/images/mercury_150_fourstroke_1791559568340.jpg'] },
-      { id: 'bw-mot-008', photos: ['/src/assets/images/suzuki_df140_motor_1791559527791.jpg'] },
-      { id: 'bw-mot-009', photos: ['/src/assets/images/yamaha_v6_offshore_1791559510414.jpg'] },
-      { id: 'bw-mot-010', photos: ['/src/assets/images/honda_bf250_motor_1791559549672.jpg', '/src/assets/images/used_outboard_inspection_1791036626286.jpg'] },
+      { id: 'bw-mot-001', photos: ['/images/yamaha_v6_offshore_1791559510414.jpg'] },
+      { id: 'bw-mot-002', photos: ['/images/suzuki_df140_motor_1791559527791.jpg'] },
+      { id: 'bw-mot-003', photos: ['/images/mercury_offshore_motor_1791036614640.jpg'] },
+      { id: 'bw-mot-004', photos: ['/images/portable_outboard_motor_1791036573522.jpg'] },
+      { id: 'bw-mot-005', photos: ['/images/honda_bf250_motor_1791559549672.jpg'] },
+      { id: 'bw-mot-006', photos: ['/images/service_outboard_engine_1791036551185.jpg'] },
+      { id: 'bw-mot-007', photos: ['/images/mercury_150_fourstroke_1791559568340.jpg'] },
+      { id: 'bw-mot-008', photos: ['/images/suzuki_df140_motor_1791559527791.jpg'] },
+      { id: 'bw-mot-009', photos: ['/images/yamaha_v6_offshore_1791559510414.jpg'] },
+      { id: 'bw-mot-010', photos: ['/images/honda_bf250_motor_1791559549672.jpg', '/images/used_outboard_inspection_1791036626286.jpg'] },
     ];
     for (const u of photoUpdates) {
       db.prepare('UPDATE products SET product_photos_json = ? WHERE id = ?').run(
@@ -666,7 +692,7 @@ export function initDatabase() {
       heroTitle: 'POWER YOUR',
       heroHighlight: 'NEXT ADVENTURE.',
       heroSubtitle: 'New and used outboard motors for boat owners, anglers, and commercial operators. Sales, service, parts and delivery — all in one place.',
-      heroImage: '/src/assets/images/hero_outboard_boat_1791036528701.jpg',
+      heroImage: '/images/hero_outboard_boat_1791036528701.jpg',
       primaryCtaText: 'SHOP OUTBOARDS',
       secondaryCtaText: 'REQUEST A MOTOR',
       commitmentBadge: 'THE BLUEWAVE COMMITMENT',
@@ -684,7 +710,7 @@ export function initDatabase() {
         powerRange: '115 – 300+ HP',
         title: 'Looking to repower your current hull?',
         desc: 'Share your current boat transom height, steering setup, and performance goals. We match you with the optimal motor class.',
-        image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+        image: '/images/about_outboard_motor_1791036540139.jpg',
         ctaText: 'Request Repower Quote',
       },
     };
@@ -702,7 +728,7 @@ export function initDatabase() {
       title: 'Built around',
       titleHighlight: 'life on the water.',
       subtitle: 'BlueWave Outboard Motors is a marine-focused business designed to make finding the right outboard motor simple and straightforward.',
-      image: '/src/assets/images/about_outboard_motor_1791036540139.jpg',
+      image: '/images/about_outboard_motor_1791036540139.jpg',
       badgeOverlayTitle: 'Dealership Verified Quality',
       badgeOverlayDesc: 'Inspected, compression-tested, and ready for water.',
       badgeOverlayTag: 'BLUEWAVE SPEC',
@@ -735,7 +761,7 @@ export function initDatabase() {
           id: 'sales',
           title: 'OUTBOARD SALES',
           desc: 'New and used motors across popular power classes.',
-          image: '/src/assets/images/mercury_offshore_motor_1791036614640.jpg',
+          image: '/images/mercury_offshore_motor_1791036614640.jpg',
           actionText: 'View Available Classes',
           actionPage: 'shop',
           bullets: [
@@ -748,7 +774,7 @@ export function initDatabase() {
           id: 'service',
           title: 'SERVICE & REPAIRS',
           desc: 'Maintenance and repair support can be arranged for customers.',
-          image: '/src/assets/images/service_outboard_engine_1791036551185.jpg',
+          image: '/images/service_outboard_engine_1791036551185.jpg',
           actionText: 'Inquire About Service',
           actionPage: 'contact',
           bullets: [
@@ -761,7 +787,7 @@ export function initDatabase() {
           id: 'parts',
           title: 'PARTS & ACCESSORIES',
           desc: 'Ask us about compatible controls, props, rigging, and accessories.',
-          image: '/src/assets/images/parts_propellers_rigging_1791036562604.jpg',
+          image: '/images/parts_propellers_rigging_1791036562604.jpg',
           actionText: 'Request Parts / Rigging',
           actionPage: 'order',
           bullets: [

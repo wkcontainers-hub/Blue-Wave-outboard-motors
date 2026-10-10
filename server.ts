@@ -17,10 +17,16 @@ async function startServer() {
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Static folders for images and user uploads
-  app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
-  app.use('/src/assets/images', express.static(path.resolve(__dirname, 'src/assets/images')));
-  app.use('/assets/images', express.static(path.resolve(__dirname, 'public/assets/images')));
-  app.use('/images', express.static(path.resolve(__dirname, 'public/images')));
+  const uploadsPath = path.resolve(__dirname, 'uploads');
+  const publicImagesPath = path.resolve(__dirname, 'public/images');
+  const srcImagesPath = path.resolve(__dirname, 'src/assets/images');
+
+  app.use('/uploads', express.static(uploadsPath));
+  app.use('/images', express.static(publicImagesPath));
+  app.use('/assets/images', express.static(publicImagesPath));
+  // Fallback aliases for legacy /src/assets/images requests
+  app.use('/src/assets/images', express.static(publicImagesPath));
+  app.use('/src/assets/images', express.static(srcImagesPath));
 
   // Initialize SQLite database & seed records
   initDatabase();

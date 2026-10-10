@@ -69,6 +69,7 @@ export interface CustomerProfile {
   state: string;
   zipCode: string;
   country: string;
+  tutorialCompleted?: boolean;
 }
 
 export interface CartItem {

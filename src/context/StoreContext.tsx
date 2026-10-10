@@ -160,6 +160,7 @@ interface StoreContextType {
   register: (data: any) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (profile: any) => Promise<{ success: boolean; error?: string }>;
+  completeTutorial: () => Promise<void>;
   refreshProducts: () => Promise<void>;
   refreshBusinessInfo: () => Promise<void>;
   refreshPaymentMethods: () => Promise<void>;
@@ -472,6 +473,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const completeTutorial = async () => {
+    // 1. Immediately update local state so arrow dismisses instantly
+    if (currentUser) {
+      setCurrentUser((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          profile: prev.profile ? { ...prev.profile, tutorialCompleted: true } : { deliveryAddress: '', city: '', state: '', zipCode: '', country: 'United States', tutorialCompleted: true },
+        };
+      });
+      // Also write persistent client flag tied to user ID
+      try {
+        localStorage.setItem(`bw_tutorial_completed_${currentUser.id}`, 'true');
+      } catch (e) {
+        console.warn('Could not set localStorage tutorial flag:', e);
+      }
+    }
+
+    // 2. Persist to server database for cross-device sync
+    try {
+      await fetch('/api/auth/tutorial-complete', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+    } catch (e) {
+      console.warn('Could not sync tutorial completion to server:', e);
+    }
+  };
+
   // Product management operations (Admin)
   const addMotor = async (motorData: Omit<OutboardMotorListing, 'id' | 'createdAt'>) => {
     try {
@@ -614,6 +644,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         register,
         logout,
         updateProfile,
+        completeTutorial,
         refreshProducts,
         refreshBusinessInfo,
         refreshPaymentMethods,

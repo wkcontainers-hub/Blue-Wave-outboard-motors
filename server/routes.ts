@@ -92,6 +92,7 @@ apiRouter.post('/auth/register', (req, res) => {
         state: state || '',
         zipCode: zipCode || '',
         country: 'United States',
+        tutorialCompleted: false,
       },
     },
   });
@@ -133,6 +134,7 @@ apiRouter.post('/auth/login', (req, res) => {
             state: profile.state || '',
             zipCode: profile.zip_code || '',
             country: profile.country || 'United States',
+            tutorialCompleted: Boolean(profile.tutorial_completed),
           }
         : null,
     },
@@ -159,10 +161,24 @@ apiRouter.get('/auth/me', requireAuth, (req: AuthRequest, res) => {
             state: profile.state || '',
             zipCode: profile.zip_code || '',
             country: profile.country || 'United States',
+            tutorialCompleted: Boolean(profile.tutorial_completed),
           }
         : null,
     },
   });
+});
+
+apiRouter.post('/auth/tutorial-complete', requireAuth, (req: AuthRequest, res) => {
+  const now = new Date().toISOString();
+  db.prepare(`
+    INSERT INTO customer_profiles (user_id, tutorial_completed, updated_at)
+    VALUES (?, 1, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      tutorial_completed = 1,
+      updated_at = excluded.updated_at
+  `).run(req.user!.userId, now);
+
+  res.json({ success: true, tutorialCompleted: true });
 });
 
 apiRouter.put('/auth/profile', requireAuth, (req: AuthRequest, res) => {

@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from './Header.tsx';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -81,10 +82,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavig
                 >
                   {/* Photo */}
                   <img
-                    src={item.photo || '/src/assets/images/about_outboard_motor_1791036540139.jpg'}
+                    src={getSafeImageUrl(item.photo)}
                     alt={item.model}
                     className="w-18 h-16 rounded-lg object-cover bg-[#091522] shrink-0 border border-white/10"
                     referrerPolicy="no-referrer"
+                    onError={handleImageError}
                   />
 
                   {/* Details */}

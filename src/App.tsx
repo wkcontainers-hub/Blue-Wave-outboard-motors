@@ -19,6 +19,8 @@ import { MyAccountPage } from './pages/MyAccountPage.tsx';
 import { AdminLoginModal } from './components/AdminLoginModal.tsx';
 import { CartDrawer } from './components/CartDrawer.tsx';
 import { CustomerAuthModal } from './components/CustomerAuthModal.tsx';
+import { CustomerAccountDrawer, AccountMenuTab } from './components/CustomerAccountDrawer.tsx';
+import { AccountTutorialArrow } from './components/AccountTutorialArrow.tsx';
 
 interface PrefillData {
   category?: string;
@@ -37,6 +39,8 @@ function MainApp() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCustomerAuthOpen, setIsCustomerAuthOpen] = useState(false);
   const [customerAuthMode, setCustomerAuthMode] = useState<'login' | 'register'>('login');
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [accountInitialTab, setAccountInitialTab] = useState<AccountMenuTab>('orders');
 
   // Sync hash routing so back/forward buttons, direct links, and #admin work
   useEffect(() => {
@@ -115,6 +119,14 @@ function MainApp() {
             setCustomerAuthMode(mode || 'login');
             setIsCustomerAuthOpen(true);
           }}
+          onOpenAccountMenu={() => setIsAccountMenuOpen(true)}
+        />
+      )}
+
+      {/* First-Time Animated Tutorial Arrow (Points to ☰ top-right hamburger menu for new customers) */}
+      {currentPage !== 'admin' && (
+        <AccountTutorialArrow
+          onOpenMenu={() => setIsAccountMenuOpen(true)}
         />
       )}
 
@@ -144,6 +156,7 @@ function MainApp() {
               setCustomerAuthMode('login');
               setIsCustomerAuthOpen(true);
             }}
+            initialTab={accountInitialTab}
           />
         )}
         {currentPage === 'admin' && (
@@ -182,12 +195,26 @@ function MainApp() {
         onNavigate={handleNavigate}
       />
 
+      {/* Customer Account Slide-Out Drawer (☰ 6 Options) */}
+      <CustomerAccountDrawer
+        isOpen={isAccountMenuOpen}
+        onClose={() => setIsAccountMenuOpen(false)}
+        onNavigate={handleNavigate}
+        onOpenCart={() => setIsCartOpen(true)}
+        onNavigateToTab={(tab) => {
+          setAccountInitialTab(tab);
+          handleNavigate('account');
+        }}
+      />
+
       {/* Customer Login / Register Modal */}
       <CustomerAuthModal
         isOpen={isCustomerAuthOpen}
         onClose={() => setIsCustomerAuthOpen(false)}
         defaultMode={customerAuthMode}
-        onSuccess={() => handleNavigate('account')}
+        onSuccess={() => {
+          // Do not force-redirect to account dashboard. Keep current page and normal website interface.
+        }}
       />
 
       {/* Admin Login Modal */}
