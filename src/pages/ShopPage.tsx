@@ -23,6 +23,7 @@ import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
 import { useStore } from '../context/StoreContext.tsx';
 import { OutboardMotorListing } from '../types/inventory.ts';
 import { InquiryModal } from '../components/InquiryModal.tsx';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface ShopPageProps {
   onNavigate: (
@@ -311,7 +312,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
             {sortedMotors.map((motor) => {
               const photos = motor.productPhotos?.length > 0
                 ? motor.productPhotos
-                : ['/src/assets/images/about_outboard_motor_1791036540139.jpg'];
+                : ['/images/about_outboard_motor_1791036540139.jpg'];
               const isSold = motor.availability === 'Sold' || (motor.stockCount !== undefined && motor.stockCount <= 0);
 
               return (
@@ -327,10 +328,11 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
                     {/* Compact Image Container */}
                     <div className="relative aspect-[16/11] overflow-hidden bg-[#060D17]">
                       <img
-                        src={photos[0]}
+                        src={getSafeImageUrl(photos[0])}
                         alt={motor.model}
                         className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                         referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e)}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0B1826] via-transparent to-transparent opacity-75 pointer-events-none" />
 
@@ -487,10 +489,11 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
             {/* Spec Modal Photo */}
             <div className="relative aspect-[16/9] rounded-xl overflow-hidden mb-6 bg-[#060D17]">
               <img
-                src={activeSpecMotor.productPhotos[0] || '/src/assets/images/about_outboard_motor_1791036540139.jpg'}
+                src={getSafeImageUrl(activeSpecMotor.productPhotos[0])}
                 alt={activeSpecMotor.model}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => handleImageError(e)}
               />
               <div className="absolute bottom-3 left-3 bg-[#050B14]/85 backdrop-blur-md px-3 py-1 rounded text-xs font-mono font-bold text-white">
                 Price: {activeSpecMotor.isCallForPrice || !activeSpecMotor.price ? 'Call for Price' : formatMoney(activeSpecMotor.price)}

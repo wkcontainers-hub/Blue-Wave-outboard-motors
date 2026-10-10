@@ -35,6 +35,7 @@ import {
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { OutboardMotorListing, OutboardBrand, MotorCondition, ShaftLength, AdminStats } from '../types/inventory.ts';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface AdminDashboardProps {
   onNavigate: (page: PageId) => void;
@@ -790,10 +791,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                     <div>
                       <div className="relative aspect-[16/10] bg-[#060D17]">
                         <img
-                          src={m.productPhotos[0] || '/src/assets/images/about_outboard_motor_1791036540139.jpg'}
+                          src={getSafeImageUrl(m.productPhotos[0])}
                           alt={m.model}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e)}
                         />
                         <div className="absolute top-2.5 left-2.5">
                           {isSold ? (
@@ -1727,12 +1729,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                     <div className="flex flex-col sm:flex-row gap-4 items-start">
                       <div className="relative w-48 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
                         <img
-                          src={homeForm.heroImage}
+                          src={getSafeImageUrl(homeForm.heroImage, '/images/hero_outboard_boat_1791036528701.jpg')}
                           alt="Hero background"
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/src/assets/images/hero_outboard_boat_1791036528701.jpg';
-                          }}
+                          onError={(e) => handleImageError(e, '/images/hero_outboard_boat_1791036528701.jpg')}
                         />
                       </div>
                       <div className="flex-1 w-full space-y-2">
@@ -1934,12 +1934,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                       <div className="flex flex-col sm:flex-row gap-4 items-start">
                         <div className="relative w-40 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
                           <img
-                            src={homeForm.repowerCard.image}
+                            src={getSafeImageUrl(homeForm.repowerCard.image, '/images/about_outboard_motor_1791036540139.jpg')}
                             alt="Repower motor"
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
-                            }}
+                            onError={(e) => handleImageError(e, '/images/about_outboard_motor_1791036540139.jpg')}
                           />
                         </div>
                         <div className="flex-1 w-full space-y-2">
@@ -2071,12 +2069,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                     <div className="flex flex-col sm:flex-row gap-4 items-start">
                       <div className="relative w-48 h-36 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
                         <img
-                          src={aboutForm.image}
+                          src={getSafeImageUrl(aboutForm.image, '/images/about_outboard_motor_1791036540139.jpg')}
                           alt="About showcase"
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
-                          }}
+                          onError={(e) => handleImageError(e, '/images/about_outboard_motor_1791036540139.jpg')}
                         />
                       </div>
                       <div className="flex-1 w-full space-y-3">
@@ -2238,12 +2234,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                             <label className="block text-xs font-semibold text-slate-300 mb-1">Service Photograph</label>
                             <div className="relative aspect-[16/10] rounded-lg overflow-hidden border border-white/15 bg-black mb-2">
                               <img
-                                src={card.image}
+                                src={getSafeImageUrl(card.image, '/images/service_outboard_engine_1791036551185.jpg')}
                                 alt={card.title}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/src/assets/images/service_outboard_engine_1791036551185.jpg';
-                                }}
+                                onError={(e) => handleImageError(e, '/images/service_outboard_engine_1791036551185.jpg')}
                               />
                             </div>
                             <input
@@ -2758,12 +2752,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                   {/* Hero preview */}
                   <div className="relative rounded-2xl overflow-hidden min-h-[380px] flex items-center p-8 bg-[#050B14] border border-white/10">
                     <img
-                      src={homeForm.heroImage}
+                      src={getSafeImageUrl(homeForm.heroImage, '/images/hero_outboard_boat_1791036528701.jpg')}
                       alt="Hero preview"
                       className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/src/assets/images/hero_outboard_boat_1791036528701.jpg';
-                      }}
+                      onError={(e) => handleImageError(e, '/images/hero_outboard_boat_1791036528701.jpg')}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050B14] via-[#050B14]/85 to-[#050B14]/65" />
                     <div className="relative z-10 max-w-xl text-left">
@@ -2812,12 +2804,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                     {homeForm.repowerCard && (
                       <div className="rounded-xl overflow-hidden bg-[#060D17] border border-white/10 p-4 flex gap-4 items-center">
                         <img
-                          src={homeForm.repowerCard.image}
+                          src={getSafeImageUrl(homeForm.repowerCard.image, '/images/about_outboard_motor_1791036540139.jpg')}
                           alt=""
                           className="w-24 h-20 rounded-lg object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
-                          }}
+                          onError={(e) => handleImageError(e, '/images/about_outboard_motor_1791036540139.jpg')}
                         />
                         <div>
                           <span className="text-[10px] text-[#0088FF] font-mono font-bold uppercase block">
@@ -2860,12 +2850,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
 
                     <div className="relative rounded-xl overflow-hidden aspect-[4/3] border border-white/10">
                       <img
-                        src={aboutForm.image}
+                        src={getSafeImageUrl(aboutForm.image, '/images/about_outboard_motor_1791036540139.jpg')}
                         alt="About preview"
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
-                        }}
+                        onError={(e) => handleImageError(e, '/images/about_outboard_motor_1791036540139.jpg')}
                       />
                       <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur-md p-3 rounded-lg border border-white/10 flex justify-between items-center text-xs">
                         <div>
@@ -2898,12 +2886,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                       <div key={idx} className="rounded-xl overflow-hidden bg-[#0B1826] border border-white/10 flex flex-col">
                         <div className="aspect-[16/10] overflow-hidden bg-[#060D17]">
                           <img
-                            src={card.image}
+                            src={getSafeImageUrl(card.image, '/images/service_outboard_engine_1791036551185.jpg')}
                             alt=""
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/src/assets/images/service_outboard_engine_1791036551185.jpg';
-                            }}
+                            onError={(e) => handleImageError(e, '/images/service_outboard_engine_1791036551185.jpg')}
                           />
                         </div>
                         <div className="p-4 flex-1 flex flex-col justify-between">

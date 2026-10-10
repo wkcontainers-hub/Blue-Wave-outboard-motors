@@ -3,6 +3,7 @@ import { ArrowRight, ShieldCheck, Wrench, Package, Truck, CheckCircle2, ChevronR
 import { PageId } from '../components/Header.tsx';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
 import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface HomePageProps {
   onNavigate: (page: PageId) => void;
@@ -26,13 +27,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         {/* Background Image with Dark Navy/Black Gradient Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src={homeData.heroImage || '/src/assets/images/hero_outboard_boat_1791036528701.jpg'}
+            src={getSafeImageUrl(homeData.heroImage, '/images/hero_outboard_boat_1791036528701.jpg')}
             alt="High-performance outboard motors mounted on boat transom"
             className="w-full h-full object-cover object-center transform scale-105"
             referrerPolicy="no-referrer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/src/assets/images/hero_outboard_boat_1791036528701.jpg';
-            }}
+            onError={(e) => handleImageError(e, '/images/hero_outboard_boat_1791036528701.jpg')}
           />
           {/* Measured multi-stop gradient scrim to ensure high contrast */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#050B14] via-[#050B14]/85 to-[#050B14]/65" />
@@ -168,13 +167,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <div className="lg:col-span-5">
               <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#0B1826] group">
                 <img
-                  src={homeData.repowerCard?.image || '/src/assets/images/about_outboard_motor_1791036540139.jpg'}
+                  src={getSafeImageUrl(homeData.repowerCard?.image, '/images/about_outboard_motor_1791036540139.jpg')}
                   alt="High output outboard motor on showroom stand"
                   className="w-full h-80 object-cover object-center group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/src/assets/images/about_outboard_motor_1791036540139.jpg';
-                  }}
+                  onError={(e) => handleImageError(e, '/images/about_outboard_motor_1791036540139.jpg')}
                 />
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-2">

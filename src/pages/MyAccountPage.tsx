@@ -26,6 +26,7 @@ import {
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { Order, CustomerMessage, SupportTicket } from '../types/inventory.ts';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface MyAccountPageProps {
   onNavigate: (page: PageId) => void;
@@ -530,9 +531,10 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
                     {selectedOrder.items.map((it, idx) => (
                       <div key={idx} className="p-3.5 rounded-xl bg-[#060D17] border border-white/5 flex items-center gap-4">
                         <img
-                          src={it.photo || '/src/assets/images/about_outboard_motor_1791036540139.jpg'}
+                          src={getSafeImageUrl(it.photo)}
                           alt={it.model}
                           className="w-16 h-14 object-cover rounded-lg bg-[#091522]"
+                          onError={(e) => handleImageError(e)}
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-[10px] text-[#0088FF] font-bold uppercase block">{it.brand}</span>

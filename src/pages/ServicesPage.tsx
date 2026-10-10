@@ -3,6 +3,7 @@ import { ShoppingBag, Wrench, Package, ArrowRight, CheckCircle } from 'lucide-re
 import { PageId } from '../components/Header.tsx';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
 import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
+import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
 
 interface ServicesPageProps {
   onNavigate: (page: PageId) => void;
@@ -61,13 +62,11 @@ export const ServicesPage: React.FC<ServicesPageProps> = ({ onNavigate }) => {
               {/* Card Image */}
               <div className="relative aspect-[16/10] overflow-hidden bg-[#07111D]">
                 <img
-                  src={card.image}
+                  src={getSafeImageUrl(card.image, '/images/service_outboard_engine_1791036551185.jpg')}
                   alt={card.title}
                   className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                   referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/src/assets/images/service_outboard_engine_1791036551185.jpg';
-                  }}
+                  onError={(e) => handleImageError(e, '/images/service_outboard_engine_1791036551185.jpg')}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0B1826] via-transparent to-transparent opacity-80" />
               </div>
