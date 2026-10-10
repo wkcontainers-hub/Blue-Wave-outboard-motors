@@ -23,7 +23,6 @@ import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
 import { useStore } from '../context/StoreContext.tsx';
 import { OutboardMotorListing } from '../types/inventory.ts';
 import { InquiryModal } from '../components/InquiryModal.tsx';
-import { CustomerAuthModal } from '../components/CustomerAuthModal.tsx';
 
 interface ShopPageProps {
   onNavigate: (
@@ -54,12 +53,6 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
   // Modals
   const [activeSpecMotor, setActiveSpecMotor] = useState<OutboardMotorListing | null>(null);
   const [inquiryMotor, setInquiryMotor] = useState<OutboardMotorListing | null>(null);
-
-  // Customer Auth requirement state
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authDefaultMode, setAuthDefaultMode] = useState<'login' | 'register'>('login');
-  const [pendingMotor, setPendingMotor] = useState<OutboardMotorListing | null>(null);
-  const [pendingAction, setPendingAction] = useState<'add' | 'buy'>('add');
 
   // Added-to-cart toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -115,15 +108,6 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
   });
 
   const handleAddToCart = (motor: OutboardMotorListing) => {
-    // Customers must be authenticated before adding products to cart
-    if (!currentUser) {
-      setPendingMotor(motor);
-      setPendingAction('add');
-      setAuthDefaultMode('login');
-      setIsAuthModalOpen(true);
-      return;
-    }
-
     const res = addToCart(motor);
     if (res.success) {
       setToastMessage(`Added "${motor.brand} ${motor.model}" to cart.`);
@@ -134,42 +118,12 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
   };
 
   const handleBuyNow = (motor: OutboardMotorListing) => {
-    // Customers must be authenticated before proceeding with purchasing
-    if (!currentUser) {
-      setPendingMotor(motor);
-      setPendingAction('buy');
-      setAuthDefaultMode('login');
-      setIsAuthModalOpen(true);
-      return;
-    }
-
     const res = addToCart(motor);
     if (res.success) {
       onNavigate('checkout');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       alert(res.error || 'Cannot purchase this item.');
-    }
-  };
-
-  // Callback when user signs in or registers from the shop modal
-  const handleAuthSuccess = () => {
-    setIsAuthModalOpen(false);
-    if (pendingMotor) {
-      const targetMotor = pendingMotor;
-      const targetAction = pendingAction;
-      setPendingMotor(null);
-      
-      const res = addToCart(targetMotor);
-      if (res.success) {
-        setToastMessage(`Added "${targetMotor.brand} ${targetMotor.model}" to cart.`);
-        setTimeout(() => setToastMessage(null), 3500);
-
-        if (targetAction === 'buy') {
-          onNavigate('checkout');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }
     }
   };
 
@@ -603,17 +557,6 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
           </div>
         </div>
       )}
-
-      {/* Customer Registration and Login Pop-up Modal */}
-      <CustomerAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => {
-          setIsAuthModalOpen(false);
-          setPendingMotor(null);
-        }}
-        defaultMode={authDefaultMode}
-        onSuccess={handleAuthSuccess}
-      />
     </div>
   );
 };

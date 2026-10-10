@@ -128,7 +128,15 @@ function MainApp() {
         )}
         {currentPage === 'contact' && <ContactPage />}
         {currentPage === 'order' && <OrderPage initialPrefill={orderPrefill} />}
-        {currentPage === 'checkout' && <CheckoutPage onNavigate={handleNavigate} />}
+        {currentPage === 'checkout' && (
+          <CheckoutPage
+            onNavigate={handleNavigate}
+            onOpenAuth={(mode) => {
+              setCustomerAuthMode(mode || 'login');
+              setIsCustomerAuthOpen(true);
+            }}
+          />
+        )}
         {currentPage === 'account' && (
           <MyAccountPage
             onNavigate={handleNavigate}

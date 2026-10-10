@@ -14,6 +14,8 @@ import {
   Clock,
   Sparkles,
   Info,
+  User,
+  LogIn,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
@@ -21,9 +23,10 @@ import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
 
 interface CheckoutPageProps {
   onNavigate: (page: PageId) => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAuth }) => {
   const { cart, cartSubtotal, cartShipping, cartTotal, currentUser, clearCart, formatMoney, businessInfo } = useStore();
 
   // Shipping & Contact Details
@@ -239,7 +242,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
               <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
                 <div>
                   <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF]">
-                    STEP 1 OF 2
+                    STEP 1 OF 2 &bull; GUEST OR ACCOUNT CHECKOUT
                   </span>
                   <h2 className="text-xl sm:text-2xl font-black text-white font-['Cabinet_Grotesk']">
                     Delivery &amp; Customer Information
@@ -249,6 +252,45 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
                   <Truck className="w-5 h-5" />
                 </div>
               </div>
+
+              {/* Guest Checkout Notice / Optional Log In */}
+              {!currentUser && onOpenAuth && (
+                <div className="mb-6 p-4 rounded-xl bg-[#07111D] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#0088FF]/15 text-[#0088FF] flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">
+                        Checking out as a Guest
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        No account or password is required. Have an existing account?
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAuth('login')}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-[#0B1826] hover:bg-[#122438] text-white text-xs font-semibold border border-white/10 hover:border-[#0088FF]/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-[#0088FF]" />
+                    <span>Log In to Auto-Fill</span>
+                  </button>
+                </div>
+              )}
+
+              {currentUser && (
+                <div className="mb-6 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Logged in as <strong>{currentUser.fullName}</strong> ({currentUser.email})</span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-900/60 text-emerald-200 px-2 py-0.5 rounded font-mono font-bold">
+                    PRE-FILLED
+                  </span>
+                </div>
+              )}
 
               {error && (
                 <div className="mb-6 p-3 rounded-lg bg-red-950/70 border border-red-800/70 text-red-300 text-xs flex items-center gap-2">
@@ -799,17 +841,37 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
 
             {/* Direct Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-              <button
-                onClick={() => onNavigate('account')}
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2"
-              >
-                <span>VIEW MY ORDER IN ACCOUNT</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {currentUser ? (
+                <button
+                  onClick={() => onNavigate('account')}
+                  className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>VIEW MY ORDER IN ACCOUNT</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      if (onOpenAuth) onOpenAuth('register');
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>CREATE OPTIONAL ACCOUNT</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onNavigate('shop')}
+                    className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0B1826] hover:bg-[#122438] text-white text-xs font-bold uppercase tracking-wider transition-colors border border-white/10"
+                  >
+                    CONTINUE SHOPPING
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={() => onNavigate('contact')}
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-200 text-xs font-bold uppercase tracking-wider transition-colors border border-white/10"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-200 text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 cursor-pointer"
               >
                 CONTACT BLUEWAVE
               </button>
