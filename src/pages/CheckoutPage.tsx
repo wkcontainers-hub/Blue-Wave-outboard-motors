@@ -20,6 +20,7 @@ import {
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
+import { getApiUrl } from '../utils/api.ts';
 
 interface CheckoutPageProps {
   onNavigate: (page: PageId) => void;
@@ -102,7 +103,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
     setError(null);
 
     try {
-      const res = await fetch('/api/orders/checkout', {
+      const res = await fetch(getApiUrl('/api/orders/checkout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setLoading(false);
 
       if (res.ok) {
@@ -136,7 +137,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
         setStep('payment_instructions');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        setError(data.error || 'Checkout failed');
+        setError(data.error || `Checkout failed (HTTP ${res.status})`);
       }
     } catch {
       setLoading(false);
@@ -174,7 +175,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
 
     setReceiptSubmitting(true);
     try {
-      const res = await fetch('/api/payments/submit-receipt', {
+      const res = await fetch(getApiUrl('/api/payments/submit-receipt'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

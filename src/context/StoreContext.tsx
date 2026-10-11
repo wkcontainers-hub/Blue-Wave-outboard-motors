@@ -9,6 +9,7 @@ import {
   CustomerMessage,
   SupportTicket,
 } from '../types/inventory.ts';
+import { getApiUrl, safeFetchJson } from '../utils/api.ts';
 
 const DEFAULT_BUSINESS_INFO: BusinessInfo = {
   businessName: 'BlueWave Outboard Motors',
@@ -195,9 +196,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load business info from backend
   const refreshBusinessInfo = useCallback(async () => {
     try {
-      const res = await fetch('/api/settings/business');
-      if (res.ok) {
-        const data = await res.json();
+      const res = await safeFetchJson<any>('/api/settings/business');
+      if (res.ok && res.data) {
+        const data = res.data;
         if (data && data.businessName) {
           const loc = data.location || (data.address ? `${data.address}, ${data.city || ''}, ${data.state || ''} ${data.zipCode || ''}`.trim() : DEFAULT_BUSINESS_INFO.location);
           setBusinessInfo({ ...DEFAULT_BUSINESS_INFO, ...data, location: loc });
@@ -212,10 +213,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshProducts = useCallback(async () => {
     setLoadingMotors(true);
     try {
-      const res = await fetch('/api/products');
-      if (res.ok) {
-        const data = await res.json();
-        setMotors(data);
+      const res = await safeFetchJson<OutboardMotorListing[]>('/api/products');
+      if (res.ok && Array.isArray(res.data)) {
+        setMotors(res.data);
       }
     } catch (e) {
       console.error('Failed to load products', e);
@@ -227,10 +227,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load payment methods from backend
   const refreshPaymentMethods = useCallback(async () => {
     try {
-      const res = await fetch('/api/payments/methods');
-      if (res.ok) {
-        const data = await res.json();
-        setPaymentMethods(data.methods || []);
+      const res = await safeFetchJson<{ methods: PaymentMethodConfig[] }>('/api/payments/methods');
+      if (res.ok && res.data) {
+        setPaymentMethods(res.data.methods || []);
       }
     } catch (e) {
       console.warn('Failed to load payment methods', e);
@@ -240,13 +239,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Check current session
   const verifyAuth = useCallback(async (token: string) => {
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await safeFetchJson<{ user: User }>('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data.user);
-      } else {
+      if (res.ok && res.data) {
+        setCurrentUser(res.data.user);
+      } else if (res.status === 401 || res.status === 403) {
         localStorage.removeItem('bw_token');
         setAuthToken(null);
         setCurrentUser(null);
@@ -260,10 +258,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshCart = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const res = await fetch('/api/cart', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setCart(data.items || []);
+      const res = await safeFetchJson<{ items: CartItem[] }>('/api/cart', { headers });
+      if (res.ok && res.data) {
+        setCart(res.data.items || []);
       }
     } catch (e) {
       console.warn('Failed to load cart', e);
@@ -273,9 +270,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load page content from backend
   const refreshPagesContent = useCallback(async () => {
     try {
-      const res = await fetch('/api/pages');
-      if (res.ok) {
-        const data = await res.json();
+      const res = await safeFetchJson<any>('/api/pages');
+      if (res.ok && res.data) {
+        const data = res.data;
         setPagesContent((prev) => ({
           home: data.home ? { ...prev.home, ...data.home } : prev.home,
           about: data.about ? { ...prev.about, ...data.about } : prev.about,
@@ -290,7 +287,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updatePageContent = async (pageId: 'home' | 'about' | 'services', content: any) => {
     try {
       const headers = getAuthHeaders();
-      const res = await fetch(`/api/pages/${pageId}`, {
+      const res = await safeFetchJson(`/api/pages/${pageId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(content),
@@ -302,8 +299,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }));
         return { success: true };
       }
-      const data = await res.json().catch(() => ({}));
-      return { success: false, error: data.error || 'Failed to update page content' };
+      return { success: false, error: res.error || 'Failed to update page content' };
     } catch (e: any) {
       return { success: false, error: e.message || 'Network error' };
     }
@@ -325,7 +321,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const syncCartToBackend = async (newItems: CartItem[]) => {
     setCart(newItems);
     try {
-      await fetch('/api/cart/sync', {
+      await safeFetchJson('/api/cart/sync', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ items: newItems }),
@@ -407,45 +403,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Authentication operations
   const login = async (email: string, pass: string) => {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Login failed' };
-      }
+    const res = await safeFetchJson<{ token: string; user: User }>('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass }),
+    });
 
-      localStorage.setItem('bw_token', data.token);
-      setAuthToken(data.token);
-      setCurrentUser(data.user);
-      return { success: true, role: data.user.role };
-    } catch {
-      return { success: false, error: 'Network error communicating with server' };
+    if (!res.ok || !res.data) {
+      return { success: false, error: res.error || 'Login failed' };
     }
+
+    localStorage.setItem('bw_token', res.data.token);
+    setAuthToken(res.data.token);
+    setCurrentUser(res.data.user);
+    return { success: true, role: res.data.user.role };
   };
 
   const register = async (formData: any) => {
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Registration failed' };
-      }
+    const res = await safeFetchJson<{ token: string; user: User }>('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
 
-      localStorage.setItem('bw_token', data.token);
-      setAuthToken(data.token);
-      setCurrentUser(data.user);
-      return { success: true };
-    } catch {
-      return { success: false, error: 'Network error registering account' };
+    if (!res.ok || !res.data) {
+      return { success: false, error: res.error || 'Registration failed' };
     }
+
+    localStorage.setItem('bw_token', res.data.token);
+    setAuthToken(res.data.token);
+    setCurrentUser(res.data.user);
+    return { success: true };
   };
 
   const logout = () => {
@@ -457,14 +445,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateProfile = async (profileData: any) => {
     try {
-      const res = await fetch('/api/auth/profile', {
+      const res = await safeFetchJson('/api/auth/profile', {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(profileData),
       });
-      const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Profile update failed' };
+        return { success: false, error: res.error || 'Profile update failed' };
       }
       if (authToken) verifyAuth(authToken);
       return { success: true };
@@ -493,7 +480,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 2. Persist to server database for cross-device sync
     try {
-      await fetch('/api/auth/tutorial-complete', {
+      await safeFetchJson('/api/auth/tutorial-complete', {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -505,14 +492,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Product management operations (Admin)
   const addMotor = async (motorData: Omit<OutboardMotorListing, 'id' | 'createdAt'>) => {
     try {
-      const res = await fetch('/api/products', {
+      const res = await safeFetchJson('/api/products', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(motorData),
       });
-      const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to add motor' };
+        return { success: false, error: res.error || 'Failed to add motor' };
       }
       await refreshProducts();
       return { success: true };
@@ -523,14 +509,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateMotor = async (id: string, motorData: Partial<OutboardMotorListing>) => {
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await safeFetchJson(`/api/products/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(motorData),
       });
-      const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to update motor' };
+        return { success: false, error: res.error || 'Failed to update motor' };
       }
       await refreshProducts();
       return { success: true };
@@ -541,13 +526,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteMotor = async (id: string) => {
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await safeFetchJson(`/api/products/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Failed to delete motor' };
+        return { success: false, error: res.error || 'Failed to delete motor' };
       }
       await refreshProducts();
       return { success: true };
@@ -558,7 +542,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleMotorAvailability = async (id: string, newStatus: OutboardMotorListing['availability']) => {
     try {
-      await fetch(`/api/products/${id}/availability`, {
+      await safeFetchJson(`/api/products/${id}/availability`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ availability: newStatus }),
@@ -583,17 +567,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const loginEmail = email.includes('@') ? email : 'admin@bluewaveoutboards.com';
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await safeFetchJson<{ token: string; user: User }>('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user?.role === 'admin') {
-          localStorage.setItem('bw_token', data.token);
-          setAuthToken(data.token);
-          setCurrentUser(data.user);
+      if (res.ok && res.data) {
+        if (res.data.user?.role === 'admin') {
+          localStorage.setItem('bw_token', res.data.token);
+          setAuthToken(res.data.token);
+          setCurrentUser(res.data.user);
           return true;
         }
       }

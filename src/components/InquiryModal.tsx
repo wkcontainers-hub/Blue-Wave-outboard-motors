@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Send, CheckCircle2, MessageSquare, Anchor, AlertCircle } from 'lucide-react';
 import { OutboardMotorListing } from '../types/inventory.ts';
 import { useStore } from '../context/StoreContext.tsx';
+import { getApiUrl } from '../utils/api.ts';
 
 interface InquiryModalProps {
   motor: OutboardMotorListing | null;
@@ -35,7 +36,7 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ motor, onClose }) =>
     setError(null);
 
     try {
-      const res = await fetch('/api/messages', {
+      const res = await fetch(getApiUrl('/api/messages'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,12 +54,12 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ motor, onClose }) =>
       if (res.ok) {
         setSubmitted(true);
       } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to submit inquiry');
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `Failed to submit inquiry (HTTP ${res.status})`);
       }
     } catch {
       setLoading(false);
-      setError('Network error submitting question');
+      setError('Network communication error submitting question');
     }
   };
 

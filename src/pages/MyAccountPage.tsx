@@ -27,6 +27,7 @@ import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { Order, CustomerMessage, SupportTicket } from '../types/inventory.ts';
 import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
+import { getApiUrl } from '../utils/api.ts';
 
 interface MyAccountPageProps {
   onNavigate: (page: PageId) => void;
@@ -106,8 +107,8 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
 
     // Fetch orders
     setLoadingOrders(true);
-    fetch('/api/orders/my-orders', { headers })
-      .then((res) => res.json())
+    fetch(getApiUrl('/api/orders/my-orders'), { headers })
+      .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setOrders(data);
       })
@@ -116,8 +117,8 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
 
     // Fetch messages
     setLoadingMessages(true);
-    fetch('/api/messages/my-messages', { headers })
-      .then((res) => res.json())
+    fetch(getApiUrl('/api/messages/my-messages'), { headers })
+      .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setMessages(data);
       })
@@ -126,8 +127,8 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
 
     // Fetch support tickets
     setLoadingTickets(true);
-    fetch('/api/support/my-tickets', { headers })
-      .then((res) => res.json())
+    fetch(getApiUrl('/api/support/my-tickets'), { headers })
+      .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data)) setTickets(data);
       })
@@ -190,7 +191,7 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
     e.preventDefault();
     setPassMsg(null);
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(getApiUrl('/api/auth/change-password'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,16 +199,16 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
         },
         body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setPassMsg({ text: 'Password changed successfully', error: false });
         setCurrentPass('');
         setNewPass('');
       } else {
-        setPassMsg({ text: data.error || 'Password update failed', error: true });
+        setPassMsg({ text: data.error || `Password update failed (HTTP ${res.status})`, error: true });
       }
     } catch {
-      setPassMsg({ text: 'Error changing password', error: true });
+      setPassMsg({ text: 'Error communicating with server to change password', error: true });
     }
   };
 
@@ -217,7 +218,7 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
     if (!activeMessage || !newReplyContent.trim()) return;
 
     try {
-      const res = await fetch(`/api/messages/${activeMessage.id}/reply`, {
+      const res = await fetch(getApiUrl(`/api/messages/${activeMessage.id}/reply`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
     if (!newMsgSubject.trim() || !newMsgContent.trim()) return;
 
     try {
-      const res = await fetch('/api/messages', {
+      const res = await fetch(getApiUrl('/api/messages'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -270,10 +271,10 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
         setNewMsgSubject('');
         setNewMsgContent('');
         // Reload messages
-        const refresh = await fetch('/api/messages/my-messages', {
+        const refresh = await fetch(getApiUrl('/api/messages/my-messages'), {
           headers: { Authorization: `Bearer ${localStorage.getItem('bw_token')}` },
         });
-        const d = await refresh.json();
+        const d = await refresh.json().catch(() => []);
         if (Array.isArray(d)) setMessages(d);
       }
     } catch (e) {
@@ -287,7 +288,7 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
     if (!activeTicket || !ticketReplyContent.trim()) return;
 
     try {
-      const res = await fetch(`/api/support/${activeTicket.id}/reply`, {
+      const res = await fetch(getApiUrl(`/api/support/${activeTicket.id}/reply`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -320,7 +321,7 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
     if (!newTicketSubject.trim() || !newTicketMessage.trim()) return;
 
     try {
-      const res = await fetch('/api/support', {
+      const res = await fetch(getApiUrl('/api/support'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -342,10 +343,10 @@ export const MyAccountPage: React.FC<MyAccountPageProps> = ({ onNavigate, onOpen
         setNewTicketMessage('');
         setNewTicketOrderId('');
         // Reload tickets
-        const refresh = await fetch('/api/support/my-tickets', {
+        const refresh = await fetch(getApiUrl('/api/support/my-tickets'), {
           headers: { Authorization: `Bearer ${localStorage.getItem('bw_token')}` },
         });
-        const d = await refresh.json();
+        const d = await refresh.json().catch(() => []);
         if (Array.isArray(d)) setTickets(d);
       }
     } catch (e) {

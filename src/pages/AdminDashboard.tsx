@@ -36,6 +36,7 @@ import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { OutboardMotorListing, OutboardBrand, MotorCondition, ShaftLength, AdminStats } from '../types/inventory.ts';
 import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
+import { getApiUrl } from '../utils/api.ts';
 
 interface AdminDashboardProps {
   onNavigate: (page: PageId) => void;
@@ -162,7 +163,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
         try {
-          const res = await fetch('/api/upload', {
+          const res = await fetch(getApiUrl('/api/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: base64 }),
@@ -209,7 +210,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const loadStats = async () => {
     setLoadingStats(true);
     try {
-      const res = await fetch('/api/admin/stats', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/stats'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -224,7 +225,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Orders
   const loadOrders = async () => {
     try {
-      const res = await fetch('/api/admin/orders', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/orders'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
@@ -237,7 +238,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Customers
   const loadCustomers = async () => {
     try {
-      const res = await fetch('/api/admin/customers', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/customers'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setCustomers(data);
@@ -250,7 +251,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Inbox
   const loadInbox = async () => {
     try {
-      const res = await fetch('/api/admin/inbox', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/inbox'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setInboxMessages(data);
@@ -263,7 +264,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Support
   const loadSupport = async () => {
     try {
-      const res = await fetch('/api/admin/support', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/support'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setSupportTickets(data);
@@ -276,7 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Payment Receipts
   const loadReceipts = async () => {
     try {
-      const res = await fetch('/api/admin/payments/receipts', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/payments/receipts'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setPaymentReceipts(data);
@@ -289,7 +290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Load Payment Settings
   const loadPaymentSettings = async () => {
     try {
-      const res = await fetch('/api/admin/payments/settings', { headers: getHeaders() });
+      const res = await fetch(getApiUrl('/api/admin/payments/settings'), { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setPaymentConfig(data);
@@ -392,12 +393,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
 
     setReviewing(true);
     try {
-      const res = await fetch(`/api/admin/payments/receipts/${selectedReceipt.id}/review`, {
+      const res = await fetch(getApiUrl(`/api/admin/payments/receipts/${selectedReceipt.id}/review`), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ decision: reviewDecision, adminNotes: reviewNotes }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setReviewing(false);
       if (res.ok) {
         alert(data.message || 'Payment review completed');
@@ -419,7 +420,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   // Update Order Status
   const handleUpdateOrderStatus = async (orderId: string, orderStatus: string, paymentStatus?: string) => {
     try {
-      await fetch(`/api/admin/orders/${orderId}/status`, {
+      await fetch(getApiUrl(`/api/admin/orders/${orderId}/status`), {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify({ orderStatus, paymentStatus }),
@@ -438,7 +439,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     if (!selectedInboxMsg || !adminReplyText.trim()) return;
 
     try {
-      const res = await fetch(`/api/messages/${selectedInboxMsg.id}/reply`, {
+      const res = await fetch(getApiUrl(`/api/messages/${selectedInboxMsg.id}/reply`), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ content: adminReplyText.trim() }),
@@ -459,7 +460,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     if (!selectedTicket || !ticketReplyText.trim()) return;
 
     try {
-      const res = await fetch(`/api/support/${selectedTicket.id}/reply`, {
+      const res = await fetch(getApiUrl(`/api/support/${selectedTicket.id}/reply`), {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ content: ticketReplyText.trim(), newStatus }),
@@ -478,7 +479,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const handleSavePaymentConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/payments/settings', {
+      const res = await fetch(getApiUrl('/api/admin/payments/settings'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(paymentConfig),
@@ -496,7 +497,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const handleSaveBusinessSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/settings/business', {
+      const res = await fetch(getApiUrl('/api/admin/settings/business'), {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(bizForm),
