@@ -41,7 +41,7 @@ interface ShopPageProps {
 }
 
 export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) => {
-  const { motors, loadingMotors, addToCart, formatMoney, currentUser } = useStore();
+  const { motors, loadingMotors, addToCart, formatMoney } = useStore();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');

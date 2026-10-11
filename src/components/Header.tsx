@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, Shield, LogOut, ShoppingBag, User as UserIcon } from 'lucide-react';
+import { Menu, X, ArrowRight, Shield, LogOut, ShoppingBag } from 'lucide-react';
 import { BlueWaveNavbarLogo } from './BlueWaveLogo.tsx';
 import { useStore } from '../context/StoreContext.tsx';
 
@@ -11,25 +11,20 @@ export type PageId =
   | 'contact'
   | 'order'
   | 'admin'
-  | 'checkout'
-  | 'account';
+  | 'checkout';
 
 interface HeaderProps {
   currentPage: PageId;
   onNavigate: (page: PageId) => void;
   onOpenCart?: () => void;
-  onOpenAuth?: (mode?: 'login' | 'register') => void;
-  onOpenAccountMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentPage,
   onNavigate,
   onOpenCart,
-  onOpenAuth,
-  onOpenAccountMenu,
 }) => {
-  const { isAdminLoggedIn, logoutAdmin, cartCount, currentUser } = useStore();
+  const { isAdminLoggedIn, logoutAdmin, cartCount } = useStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -53,16 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
     onNavigate(page);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleAccountClick = () => {
-    if (currentUser) {
-      handleNavClick('account');
-    } else if (onOpenAuth) {
-      onOpenAuth();
-    } else {
-      handleNavClick('account');
-    }
   };
 
   return (
@@ -130,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
             })}
           </nav>
 
-          {/* Right: Cart, Account, Prominent Blue ORDER Button & Mobile Toggle */}
+          {/* Right: Cart, Prominent Blue ORDER Button & Mobile Toggle */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Shopping Cart Button */}
             <button
@@ -147,25 +132,6 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Customer Portal / Account */}
-            <button
-              onClick={handleAccountClick}
-              className={`p-2 rounded-lg transition-colors focus:outline-none cursor-pointer flex items-center gap-1.5 ${
-                currentPage === 'account'
-                  ? 'bg-white/[0.1] text-[#38BDF8]'
-                  : 'text-slate-300 hover:text-white hover:bg-white/[0.06]'
-              }`}
-              title={currentUser ? `Account (${currentUser.fullName})` : 'Customer Portal'}
-              aria-label="Customer Account"
-            >
-              <UserIcon className="w-5 h-5" />
-              {currentUser && (
-                <span className="hidden lg:inline text-xs font-semibold text-slate-200 max-w-[90px] truncate">
-                  {currentUser.fullName.split(' ')[0]}
-                </span>
-              )}
-            </button>
-
             {/* ORDER Button */}
             <button
               onClick={() => handleNavClick('order')}
@@ -178,24 +144,6 @@ export const Header: React.FC<HeaderProps> = ({
               ORDER
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
-
-            {/* Authenticated Customer Account Hamburger Menu (☰) in Top-Right Corner */}
-            {currentUser && onOpenAccountMenu && (
-              <button
-                id="bluewave-account-menu-button"
-                onClick={onOpenAccountMenu}
-                className="p-2 sm:px-2.5 sm:py-2 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-200 hover:text-white border border-white/10 hover:border-[#0088FF]/60 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer group"
-                aria-label="Open Account Menu"
-                title="Account Menu (☰)"
-              >
-                <span className="text-base font-bold leading-none select-none text-[#0088FF] group-hover:text-white transition-colors">
-                  &#9776;
-                </span>
-                <span className="hidden xl:inline text-xs font-semibold text-slate-300 group-hover:text-white">
-                  Menu
-                </span>
-              </button>
-            )}
 
             {/* Mobile Navigation Menu Button (Public Navigation) */}
             <button
@@ -247,19 +195,6 @@ export const Header: React.FC<HeaderProps> = ({
                     {cartCount}
                   </span>
                 )}
-              </button>
-
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  handleAccountClick();
-                }}
-                className="flex items-center justify-between px-4 py-3 rounded-lg text-base font-medium text-left text-slate-200 hover:bg-white/[0.05] hover:text-white"
-              >
-                <div className="flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-[#0088FF]" />
-                  <span>{currentUser ? `Account (${currentUser.fullName})` : 'Customer Portal / Sign In'}</span>
-                </div>
               </button>
 
               <div className="pt-4 mt-2 border-t border-white/10">

@@ -15,12 +15,8 @@ import { ContactPage } from './pages/ContactPage.tsx';
 import { OrderPage } from './pages/OrderPage.tsx';
 import { AdminDashboard } from './pages/AdminDashboard.tsx';
 import { CheckoutPage } from './pages/CheckoutPage.tsx';
-import { MyAccountPage } from './pages/MyAccountPage.tsx';
 import { AdminLoginModal } from './components/AdminLoginModal.tsx';
 import { CartDrawer } from './components/CartDrawer.tsx';
-import { CustomerAuthModal } from './components/CustomerAuthModal.tsx';
-import { CustomerAccountDrawer, AccountMenuTab } from './components/CustomerAccountDrawer.tsx';
-import { AccountTutorialArrow } from './components/AccountTutorialArrow.tsx';
 
 interface PrefillData {
   category?: string;
@@ -37,10 +33,6 @@ function MainApp() {
   const [orderPrefill, setOrderPrefill] = useState<PrefillData | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCustomerAuthOpen, setIsCustomerAuthOpen] = useState(false);
-  const [customerAuthMode, setCustomerAuthMode] = useState<'login' | 'register'>('login');
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const [accountInitialTab, setAccountInitialTab] = useState<AccountMenuTab>('orders');
 
   // Sync hash routing so back/forward buttons, direct links, and #admin work
   useEffect(() => {
@@ -55,7 +47,6 @@ function MainApp() {
         'order',
         'admin',
         'checkout',
-        'account',
       ];
       if (validPages.includes(hash)) {
         if (hash === 'admin' && !isAdminLoggedIn) {
@@ -115,18 +106,6 @@ function MainApp() {
           currentPage={currentPage}
           onNavigate={handleNavigate}
           onOpenCart={() => setIsCartOpen(true)}
-          onOpenAuth={(mode) => {
-            setCustomerAuthMode(mode || 'login');
-            setIsCustomerAuthOpen(true);
-          }}
-          onOpenAccountMenu={() => setIsAccountMenuOpen(true)}
-        />
-      )}
-
-      {/* First-Time Animated Tutorial Arrow (Points to ☰ top-right hamburger menu for new customers) */}
-      {currentPage !== 'admin' && (
-        <AccountTutorialArrow
-          onOpenMenu={() => setIsAccountMenuOpen(true)}
         />
       )}
 
@@ -143,20 +122,6 @@ function MainApp() {
         {currentPage === 'checkout' && (
           <CheckoutPage
             onNavigate={handleNavigate}
-            onOpenAuth={(mode) => {
-              setCustomerAuthMode(mode || 'login');
-              setIsCustomerAuthOpen(true);
-            }}
-          />
-        )}
-        {currentPage === 'account' && (
-          <MyAccountPage
-            onNavigate={handleNavigate}
-            onOpenAuth={() => {
-              setCustomerAuthMode('login');
-              setIsCustomerAuthOpen(true);
-            }}
-            initialTab={accountInitialTab}
           />
         )}
         {currentPage === 'admin' && (
@@ -167,7 +132,7 @@ function MainApp() {
               <p className="text-slate-400 mb-4">Please log in to access the Dealership Admin Dashboard.</p>
               <button
                 onClick={() => setIsLoginModalOpen(true)}
-                className="px-6 py-2.5 rounded-lg bg-[#0088FF] text-white font-bold text-xs uppercase"
+                className="px-6 py-2.5 rounded-lg bg-[#0088FF] text-white font-bold text-xs uppercase cursor-pointer"
               >
                 Log In
               </button>
@@ -181,10 +146,6 @@ function MainApp() {
         <Footer
           onNavigate={handleNavigate}
           onOpenAdminLogin={handleOpenAdminLogin}
-          onOpenCustomerAuth={(mode) => {
-            setCustomerAuthMode(mode);
-            setIsCustomerAuthOpen(true);
-          }}
         />
       )}
 
@@ -193,28 +154,6 @@ function MainApp() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         onNavigate={handleNavigate}
-      />
-
-      {/* Customer Account Slide-Out Drawer (☰ 6 Options) */}
-      <CustomerAccountDrawer
-        isOpen={isAccountMenuOpen}
-        onClose={() => setIsAccountMenuOpen(false)}
-        onNavigate={handleNavigate}
-        onOpenCart={() => setIsCartOpen(true)}
-        onNavigateToTab={(tab) => {
-          setAccountInitialTab(tab);
-          handleNavigate('account');
-        }}
-      />
-
-      {/* Customer Login / Register Modal */}
-      <CustomerAuthModal
-        isOpen={isCustomerAuthOpen}
-        onClose={() => setIsCustomerAuthOpen(false)}
-        defaultMode={customerAuthMode}
-        onSuccess={() => {
-          // Do not force-redirect to account dashboard. Keep current page and normal website interface.
-        }}
       />
 
       {/* Admin Login Modal */}

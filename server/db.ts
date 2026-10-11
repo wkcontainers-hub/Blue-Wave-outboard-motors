@@ -242,6 +242,57 @@ export function initDatabase() {
     console.warn('Could not run image path migration:', e);
   }
 
+  // Ensure Bitcoin payment method is enabled with the official wallet address
+  try {
+    const payRow = db.prepare('SELECT data_json FROM payment_settings WHERE id = ?').get('default') as any;
+    if (payRow && payRow.data_json) {
+      const parsed = JSON.parse(payRow.data_json);
+      if (Array.isArray(parsed.methods)) {
+        let changed = false;
+        let btcFound = false;
+        parsed.methods = parsed.methods.map((m: any) => {
+          if (m.id === 'bitcoin') {
+            btcFound = true;
+            changed = true;
+            return {
+              ...m,
+              enabled: true,
+              status: 'ACTIVE',
+              config: {
+                ...m.config,
+                walletAddress: 'bc1qf4rxtj2ez7wprkp2j6dx99cynxwytc447asn47',
+                paymentInstructions: 'Send the exact USD equivalent amount in BTC to the BlueWave public wallet address below. Once sent, upload a screenshot or transaction hash link for verification.',
+              },
+            };
+          }
+          return m;
+        });
+
+        if (!btcFound) {
+          parsed.methods.push({
+            id: 'bitcoin',
+            name: 'Bitcoin (BTC)',
+            enabled: true,
+            type: 'manual',
+            status: 'ACTIVE',
+            description: 'Instant cryptocurrency settlement via on-chain Bitcoin transaction.',
+            config: {
+              walletAddress: 'bc1qf4rxtj2ez7wprkp2j6dx99cynxwytc447asn47',
+              paymentInstructions: 'Send the exact USD equivalent amount in BTC to the BlueWave public wallet address below. Once sent, upload a screenshot or transaction hash link for verification.',
+            },
+          });
+          changed = true;
+        }
+
+        if (changed) {
+          db.prepare('UPDATE payment_settings SET data_json = ? WHERE id = ?').run(JSON.stringify(parsed), 'default');
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not update payment settings for bitcoin:', e);
+  }
+
   // Seed default admin if not exists
   const existingAdmin = db.prepare('SELECT id FROM users WHERE role = ?').get('admin');
   if (!existingAdmin) {

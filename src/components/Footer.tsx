@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, Mail, MapPin, Clock, MessageSquare, Facebook, Instagram, ShieldCheck, Wrench, Truck, Lock, ArrowRight, UserPlus, LogIn, ShoppingBag, Send } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, MessageSquare, Facebook, Instagram, ShieldCheck, Wrench, Truck, Lock, ArrowRight, ShoppingBag, Send, Headphones, Wrench as ToolsIcon } from 'lucide-react';
 import { PageId } from './Header.tsx';
 import { BlueWaveFullBadge } from './BlueWaveLogo.tsx';
 import { useStore } from '../context/StoreContext.tsx';
@@ -7,10 +7,9 @@ import { useStore } from '../context/StoreContext.tsx';
 interface FooterProps {
   onNavigate: (page: PageId) => void;
   onOpenAdminLogin: () => void;
-  onOpenCustomerAuth?: (mode: 'login' | 'register') => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, onOpenCustomerAuth }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin }) => {
   const { businessInfo, isAdminLoggedIn } = useStore();
   const [isVisible, setIsVisible] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -117,34 +116,30 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin, on
               <span>Request Moto</span>
             </button>
 
-            {/* 3. Join Now */}
+            {/* 3. Dealership Services */}
             <button
-              onClick={() => {
-                if (onOpenCustomerAuth) onOpenCustomerAuth('register');
-              }}
+              onClick={() => handleNav('services')}
               className={`px-5 py-3 rounded-xl bg-[#0B1826] hover:bg-[#122438] active:scale-95 text-slate-200 hover:text-white font-bold text-xs uppercase tracking-wider border border-white/15 hover:border-[#0088FF]/60 flex items-center justify-center gap-2 shadow-sm cursor-pointer transition-all duration-500 delay-500 ease-out transform min-w-[150px] ${
                 isVisible || prefersReducedMotion
                   ? 'opacity-100 translate-y-0 scale-100'
                   : 'opacity-0 translate-y-4 scale-95'
               }`}
             >
-              <UserPlus className="w-4 h-4 text-[#0088FF]" />
-              <span>Join Now</span>
+              <ToolsIcon className="w-4 h-4 text-[#0088FF]" />
+              <span>Services & Rigging</span>
             </button>
 
-            {/* 4. Log In */}
+            {/* 4. Contact Us */}
             <button
-              onClick={() => {
-                if (onOpenCustomerAuth) onOpenCustomerAuth('login');
-              }}
+              onClick={() => handleNav('contact')}
               className={`px-5 py-3 rounded-xl bg-[#060D17] hover:bg-[#0E1C2E] active:scale-95 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-wider border border-white/10 hover:border-[#0088FF]/40 flex items-center justify-center gap-2 cursor-pointer transition-all duration-500 delay-600 ease-out transform min-w-[150px] ${
                 isVisible || prefersReducedMotion
                   ? 'opacity-100 translate-y-0 scale-100'
                   : 'opacity-0 translate-y-4 scale-95'
               }`}
             >
-              <LogIn className="w-4 h-4 text-[#0088FF]" />
-              <span>Log In</span>
+              <Headphones className="w-4 h-4 text-[#0088FF]" />
+              <span>Contact Dealership</span>
             </button>
           </div>
         </div>

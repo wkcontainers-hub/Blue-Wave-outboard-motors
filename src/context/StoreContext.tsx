@@ -146,7 +146,6 @@ interface StoreContextType {
   authToken: string | null;
   isAdmin: boolean;
   isAdminLoggedIn: boolean;
-  isCustomer: boolean;
   paymentMethods: PaymentMethodConfig[];
   pagesContent: PagesContent;
   refreshPagesContent: () => Promise<void>;
@@ -155,13 +154,9 @@ interface StoreContextType {
   updateCartQty: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
-  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   loginAdmin: (userOrPass: string, pass?: string) => Promise<boolean>;
   logoutAdmin: () => void;
-  register: (data: any) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  updateProfile: (profile: any) => Promise<{ success: boolean; error?: string }>;
-  completeTutorial: () => Promise<void>;
   refreshProducts: () => Promise<void>;
   refreshBusinessInfo: () => Promise<void>;
   refreshPaymentMethods: () => Promise<void>;
@@ -401,92 +396,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }).format(num);
   };
 
-  // Authentication operations
-  const login = async (email: string, pass: string) => {
-    const res = await safeFetchJson<{ token: string; user: User }>('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass }),
-    });
-
-    if (!res.ok || !res.data) {
-      return { success: false, error: res.error || 'Login failed' };
-    }
-
-    localStorage.setItem('bw_token', res.data.token);
-    setAuthToken(res.data.token);
-    setCurrentUser(res.data.user);
-    return { success: true, role: res.data.user.role };
-  };
-
-  const register = async (formData: any) => {
-    const res = await safeFetchJson<{ token: string; user: User }>('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-
-    if (!res.ok || !res.data) {
-      return { success: false, error: res.error || 'Registration failed' };
-    }
-
-    localStorage.setItem('bw_token', res.data.token);
-    setAuthToken(res.data.token);
-    setCurrentUser(res.data.user);
-    return { success: true };
-  };
-
+  // Session operations (Administrator)
   const logout = () => {
     localStorage.removeItem('bw_token');
     setAuthToken(null);
     setCurrentUser(null);
     clearCart();
-  };
-
-  const updateProfile = async (profileData: any) => {
-    try {
-      const res = await safeFetchJson('/api/auth/profile', {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(profileData),
-      });
-      if (!res.ok) {
-        return { success: false, error: res.error || 'Profile update failed' };
-      }
-      if (authToken) verifyAuth(authToken);
-      return { success: true };
-    } catch {
-      return { success: false, error: 'Network error updating profile' };
-    }
-  };
-
-  const completeTutorial = async () => {
-    // 1. Immediately update local state so arrow dismisses instantly
-    if (currentUser) {
-      setCurrentUser((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          profile: prev.profile ? { ...prev.profile, tutorialCompleted: true } : { deliveryAddress: '', city: '', state: '', zipCode: '', country: 'United States', tutorialCompleted: true },
-        };
-      });
-      // Also write persistent client flag tied to user ID
-      try {
-        localStorage.setItem(`bw_tutorial_completed_${currentUser.id}`, 'true');
-      } catch (e) {
-        console.warn('Could not set localStorage tutorial flag:', e);
-      }
-    }
-
-    // 2. Persist to server database for cross-device sync
-    try {
-      await safeFetchJson('/api/auth/tutorial-complete', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-    } catch (e) {
-      console.warn('Could not sync tutorial completion to server:', e);
-    }
   };
 
   // Product management operations (Admin)
@@ -555,7 +470,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const isAdmin = currentUser?.role === 'admin';
   const isAdminLoggedIn = isAdmin;
-  const isCustomer = currentUser?.role === 'customer';
 
   const logoutAdmin = () => {
     logout();
@@ -612,7 +526,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         authToken,
         isAdmin,
         isAdminLoggedIn,
-        isCustomer,
         paymentMethods,
         pagesContent,
         refreshPagesContent,
@@ -621,13 +534,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateCartQty,
         removeFromCart,
         clearCart,
-        login,
         loginAdmin,
         logoutAdmin,
-        register,
         logout,
-        updateProfile,
-        completeTutorial,
         refreshProducts,
         refreshBusinessInfo,
         refreshPaymentMethods,

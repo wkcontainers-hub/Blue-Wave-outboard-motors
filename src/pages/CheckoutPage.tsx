@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -9,13 +9,15 @@ import {
   AlertCircle,
   Truck,
   Building2,
+  CreditCard,
   Lock,
   ArrowLeft,
   Clock,
   Sparkles,
   Info,
-  User,
-  LogIn,
+  Bitcoin,
+  QrCode,
+  Wallet,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
@@ -24,31 +26,30 @@ import { getApiUrl } from '../utils/api.ts';
 
 interface CheckoutPageProps {
   onNavigate: (page: PageId) => void;
-  onOpenAuth?: (mode?: 'login' | 'register') => void;
 }
 
-export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAuth }) => {
-  const { cart, cartSubtotal, cartShipping, cartTotal, currentUser, clearCart, formatMoney, businessInfo } = useStore();
+export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate }) => {
+  const { cart, cartSubtotal, cartShipping, cartTotal, clearCart, formatMoney, paymentMethods } = useStore();
 
-  // Shipping & Contact Details
-  const [fullName, setFullName] = useState(currentUser?.fullName || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [deliveryAddress, setDeliveryAddress] = useState(currentUser?.profile?.deliveryAddress || '');
-  const [city, setCity] = useState(currentUser?.profile?.city || '');
-  const [state, setState] = useState(currentUser?.profile?.state || '');
-  const [zipCode, setZipCode] = useState(currentUser?.profile?.zipCode || '');
-  const [country, setCountry] = useState(currentUser?.profile?.country || 'United States');
+  // Shipping & Contact Details (Guest Checkout)
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [country, setCountry] = useState('United States');
   const [notes, setNotes] = useState('');
 
-  // Selected Payment Method
-  const [selectedMethod, setSelectedMethod] = useState<'bank_transfer' | 'bitcoin' | 'paypal'>('bank_transfer');
+  // Selected Payment Method: Bitcoin, Bank Transfer, or PayPal
+  const [selectedMethod, setSelectedMethod] = useState<'bitcoin' | 'bank_transfer' | 'paypal'>('bitcoin');
 
   // Receipt submission state
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [customerNotes, setCustomerNotes] = useState('');
-  const [copiedWallet, setCopiedWallet] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
+  const [copiedBtc, setCopiedBtc] = useState(false);
 
   // Flow State
   const [step, setStep] = useState<'details' | 'payment_instructions' | 'confirmation'>('details');
@@ -58,20 +59,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
   const [error, setError] = useState<string | null>(null);
   const [receiptSuccess, setReceiptSuccess] = useState(false);
 
-  // Pre-fill if customer logs in or user profile changes
-  useEffect(() => {
-    if (currentUser) {
-      if (!fullName) setFullName(currentUser.fullName);
-      if (!email) setEmail(currentUser.email);
-      if (!phone && currentUser.phone) setPhone(currentUser.phone);
-      if (!deliveryAddress && currentUser.profile?.deliveryAddress) setDeliveryAddress(currentUser.profile.deliveryAddress);
-      if (!city && currentUser.profile?.city) setCity(currentUser.profile.city);
-      if (!state && currentUser.profile?.state) setState(currentUser.profile.state);
-      if (!zipCode && currentUser.profile?.zipCode) setZipCode(currentUser.profile.zipCode);
-    }
-  }, [currentUser, fullName, email, phone, deliveryAddress, city, state, zipCode]);
-
-  // Lead Bank Information (Configurable & Dynamic)
+  // Lead Bank Information
   const bankDetails = {
     beneficiaryName: 'Choussy Christian Junior',
     accountNumber: '210051969790',
@@ -84,8 +72,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
     postalCode: '64108',
   };
 
-  // Bitcoin Address (Configurable & Dynamic)
-  const btcWalletAddress = 'bc1qf4rxtj2ez7wprkp2j6dx99cynxwytc447asn47';
+  // Bitcoin Wallet Information
+  const bitcoinDetails = {
+    walletAddress:
+      paymentMethods.find((m) => m.id === 'bitcoin')?.config?.walletAddress ||
+      'bc1qf4rxtj2ez7wprkp2j6dx99cynxwytc447asn47',
+    instructions:
+      paymentMethods.find((m) => m.id === 'bitcoin')?.config?.paymentInstructions ||
+      'Send the exact USD equivalent amount in BTC to the BlueWave public wallet address below. Once sent, upload a screenshot or transaction hash link for verification.',
+  };
 
   // Handle Step 1: Submit Customer & Order Information
   const handleProceedToPayment = async (e: React.FormEvent) => {
@@ -102,12 +97,18 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
     setLoading(true);
     setError(null);
 
+    const paymentMethodLabel =
+      selectedMethod === 'bitcoin'
+        ? 'Bitcoin (BTC)'
+        : selectedMethod === 'bank_transfer'
+        ? 'Bank Transfer (Lead Bank Wire)'
+        : 'PayPal';
+
     try {
       const res = await fetch(getApiUrl('/api/orders/checkout'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(currentUser ? { Authorization: `Bearer ${localStorage.getItem('bw_token')}` } : {}),
         },
         body: JSON.stringify({
           fullName,
@@ -119,12 +120,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
           zipCode,
           country,
           items: cart,
-          paymentMethod:
-            selectedMethod === 'bank_transfer'
-              ? 'Bank Transfer (Lead Bank Wire)'
-              : selectedMethod === 'bitcoin'
-              ? 'Bitcoin (BTC)'
-              : 'PayPal',
+          paymentMethod: paymentMethodLabel,
           notes,
         }),
       });
@@ -167,11 +163,22 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
   // Handle Step 2: Submit Payment Receipt
   const handleSubmitReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptImage) {
-      alert('Please select or upload a screenshot of your bank transfer or Bitcoin transaction receipt.');
+    if (!receiptImage && !customerNotes.trim()) {
+      alert(
+        selectedMethod === 'bitcoin'
+          ? 'Please upload a transaction screenshot or enter your Bitcoin Transaction ID (TxID) / hash in the notes below.'
+          : 'Please select or upload a screenshot of your bank transfer receipt.'
+      );
       return;
     }
     if (!createdOrderId) return;
+
+    const paymentMethodLabel =
+      selectedMethod === 'bitcoin'
+        ? 'Bitcoin (BTC)'
+        : selectedMethod === 'bank_transfer'
+        ? 'Bank Transfer'
+        : 'PayPal';
 
     setReceiptSubmitting(true);
     try {
@@ -179,13 +186,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(currentUser ? { Authorization: `Bearer ${localStorage.getItem('bw_token')}` } : {}),
         },
         body: JSON.stringify({
           orderId: createdOrderId,
-          paymentMethod: selectedMethod === 'bank_transfer' ? 'Bank Transfer' : 'Bitcoin',
+          paymentMethod: paymentMethodLabel,
           amount: cartTotal,
-          receiptImage,
+          receiptImage: receiptImage || '',
           customerNotes,
         }),
       });
@@ -197,53 +203,98 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
         setStep('confirmation');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to submit receipt');
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Failed to submit receipt. Please contact BlueWave support.');
       }
     } catch {
       setReceiptSubmitting(false);
-      alert('Error submitting payment receipt');
+      alert('Network error submitting payment verification receipt.');
     }
   };
 
-  const handleCopyWallet = () => {
-    navigator.clipboard.writeText(btcWalletAddress);
-    setCopiedWallet(true);
-    setTimeout(() => setCopiedWallet(false), 2500);
+  const handleSkipReceiptForNow = () => {
+    clearCart();
+    setStep('confirmation');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCopyAccount = () => {
     navigator.clipboard.writeText(bankDetails.accountNumber);
     setCopiedAccount(true);
-    setTimeout(() => setCopiedAccount(false), 2500);
+    setTimeout(() => setCopiedAccount(false), 2000);
+  };
+
+  const handleCopyBtc = () => {
+    navigator.clipboard.writeText(bitcoinDetails.walletAddress);
+    setCopiedBtc(true);
+    setTimeout(() => setCopiedBtc(false), 2000);
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#050B14] py-12 md:py-20 text-white">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full bg-[#050B14] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 text-white min-h-[85vh]">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-slate-400 mb-8">
-          <button onClick={() => onNavigate('shop')} className="hover:text-white flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Shop</span>
-          </button>
-          <span>/</span>
-          <span className="text-[#0088FF] font-semibold">Dealership Checkout &bull; Order Processing</span>
+        {/* Dealership Header & Steps Indicator */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-white/10 gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <button
+                onClick={() => onNavigate('shop')}
+                className="text-xs text-[#0088FF] hover:underline flex items-center gap-1 cursor-pointer font-bold uppercase tracking-wider"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Return to Motors</span>
+              </button>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white font-['Cabinet_Grotesk'] tracking-tight">
+              Direct Marine Checkout
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Secure guest checkout. No account or password required.
+            </p>
+          </div>
+
+          {/* Stepper Dots */}
+          <div className="flex items-center gap-2 sm:gap-3 text-xs">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+              step === 'details' ? 'bg-[#0088FF]/20 border-[#0088FF] text-white font-bold' : 'border-white/10 text-slate-400'
+            }`}>
+              <span className="w-4 h-4 rounded-full bg-[#0088FF] text-white text-[10px] flex items-center justify-center font-bold">1</span>
+              <span>Information</span>
+            </div>
+
+            <div className="w-3 h-0.5 bg-white/20" />
+
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+              step === 'payment_instructions' ? 'bg-[#0088FF]/20 border-[#0088FF] text-white font-bold' : 'border-white/10 text-slate-400'
+            }`}>
+              <span className="w-4 h-4 rounded-full bg-white/20 text-white text-[10px] flex items-center justify-center font-bold">2</span>
+              <span>Payment</span>
+            </div>
+
+            <div className="w-3 h-0.5 bg-white/20" />
+
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+              step === 'confirmation' ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 font-bold' : 'border-white/10 text-slate-400'
+            }`}>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Confirmed</span>
+            </div>
+          </div>
         </div>
 
         {/* ======================================================== */}
-        {/* STEP 1: CUSTOMER DETAILS & PAYMENT METHOD SELECTION */}
+        {/* STEP 1: CUSTOMER & DELIVERY DETAILS FORM */}
         {/* ======================================================== */}
         {step === 'details' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* Left: Checkout Form */}
             <div className="lg:col-span-7 bg-[#0B1826] rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl">
               <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
                 <div>
                   <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF]">
-                    STEP 1 OF 2 &bull; GUEST OR ACCOUNT CHECKOUT
+                    STEP 1 OF 2 &bull; GUEST CHECKOUT
                   </span>
                   <h2 className="text-xl sm:text-2xl font-black text-white font-['Cabinet_Grotesk']">
                     Delivery &amp; Customer Information
@@ -253,45 +304,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                   <Truck className="w-5 h-5" />
                 </div>
               </div>
-
-              {/* Guest Checkout Notice / Optional Log In */}
-              {!currentUser && onOpenAuth && (
-                <div className="mb-6 p-4 rounded-xl bg-[#07111D] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#0088FF]/15 text-[#0088FF] flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block">
-                        Checking out as a Guest
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        No account or password is required. Have an existing account?
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onOpenAuth('login')}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-[#0B1826] hover:bg-[#122438] text-white text-xs font-semibold border border-white/10 hover:border-[#0088FF]/50 transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <LogIn className="w-3.5 h-3.5 text-[#0088FF]" />
-                    <span>Log In to Auto-Fill</span>
-                  </button>
-                </div>
-              )}
-
-              {currentUser && (
-                <div className="mb-6 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-emerald-300">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Logged in as <strong>{currentUser.fullName}</strong> ({currentUser.email})</span>
-                  </div>
-                  <span className="text-[10px] bg-emerald-900/60 text-emerald-200 px-2 py-0.5 rounded font-mono font-bold">
-                    PRE-FILLED
-                  </span>
-                </div>
-              )}
 
               {error && (
                 <div className="mb-6 p-3 rounded-lg bg-red-950/70 border border-red-800/70 text-red-300 text-xs flex items-center gap-2">
@@ -339,7 +351,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                     <input
                       type="tel"
                       required
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="+1 (555) 019-2834"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
@@ -350,12 +362,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                 {/* Delivery Street Address */}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                    Delivery Address / Marina Dock <span className="text-[#0088FF]">*</span>
+                    Delivery Address / Marine Slip / Marina Address <span className="text-[#0088FF]">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Street address or receiving marina dock location"
+                    placeholder="1480 Ocean Marina Drive, Dock Slip 4B"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
@@ -371,7 +383,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                     <input
                       type="text"
                       required
-                      placeholder="City"
+                      placeholder="Miami"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
@@ -380,12 +392,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
 
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                      State / Region <span className="text-[#0088FF]">*</span>
+                      State <span className="text-[#0088FF]">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. FL"
+                      placeholder="FL"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
@@ -407,7 +419,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                   </div>
                 </div>
 
-                {/* Country (Default United States) */}
+                {/* Country */}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
                     Country
@@ -434,16 +446,53 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                   />
                 </div>
 
-                {/* ======================================================== */}
                 {/* SELECT PAYMENT METHOD */}
-                {/* ======================================================== */}
                 <div className="pt-4 border-t border-white/10">
                   <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF] block mb-2 font-['Cabinet_Grotesk']">
                     SELECT PAYMENT METHOD
                   </span>
 
                   <div className="space-y-2.5">
-                    {/* Option 1: Bank Transfer (Wire / ACH) */}
+                    {/* Option 1: Bitcoin (BTC) */}
+                    <label
+                      onClick={() => setSelectedMethod('bitcoin')}
+                      className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        selectedMethod === 'bitcoin'
+                          ? 'bg-[#F7931A]/15 border-[#F7931A] shadow-md shadow-[#F7931A]/10'
+                          : 'bg-[#060D17] border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                            selectedMethod === 'bitcoin' ? 'border-[#F7931A]' : 'border-white/30'
+                          }`}
+                        >
+                          {selectedMethod === 'bitcoin' && (
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#F7931A]" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-[#F7931A]/20 text-[#F7931A] flex items-center justify-center font-bold text-xs shrink-0">
+                            <Bitcoin className="w-4 h-4 text-[#F7931A]" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-white flex items-center gap-2">
+                              Bitcoin (BTC)
+                              <span className="text-[10px] text-amber-400 font-mono font-normal">Native Network</span>
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-mono truncate max-w-[280px] sm:max-w-md block">
+                              Wallet: {bitcoinDetails.walletAddress}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-amber-950/60 text-amber-300 border border-amber-700/50 px-2 py-0.5 rounded font-mono font-bold">
+                        ACTIVE
+                      </span>
+                    </label>
+
+                    {/* Option 2: Bank Transfer (Wire / ACH) */}
                     <label
                       onClick={() => setSelectedMethod('bank_transfer')}
                       className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
@@ -463,7 +512,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                             Bank Transfer (Lead Bank Wire / ACH)
                           </span>
                           <span className="text-[11px] text-slate-400">
-                            Direct corporate bank transfer with secure verification.
+                            Direct corporate bank transfer with secure reference verification.
                           </span>
                         </div>
                       </div>
@@ -472,81 +521,81 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                       </span>
                     </label>
 
-                    {/* Option 2: Bitcoin */}
+                    {/* Option 3: PayPal */}
                     <label
-                      onClick={() => setSelectedMethod('bitcoin')}
+                      onClick={() => setSelectedMethod('paypal')}
                       className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                        selectedMethod === 'bitcoin'
+                        selectedMethod === 'paypal'
                           ? 'bg-[#0088FF]/15 border-[#0088FF] shadow-md'
                           : 'bg-[#060D17] border-white/10 hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-5 h-5 rounded-full border flex items-center justify-center border-[#0088FF]">
-                          {selectedMethod === 'bitcoin' && (
+                          {selectedMethod === 'paypal' && (
                             <div className="w-2.5 h-2.5 rounded-full bg-[#0088FF]" />
                           )}
                         </div>
                         <div>
                           <span className="text-xs font-bold text-white block">
-                            Bitcoin (BTC)
+                            PayPal
                           </span>
                           <span className="text-[11px] text-slate-400">
-                            Instant on-chain Bitcoin cryptocurrency payment.
+                            Official PayPal invoice sent directly to your email address.
                           </span>
                         </div>
                       </div>
-                      <span className="text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-700/50 px-2 py-0.5 rounded font-mono font-bold">
-                        ACTIVE
+                      <span className="text-[10px] bg-sky-950/60 text-sky-300 border border-sky-700/50 px-2 py-0.5 rounded font-mono font-bold">
+                        AVAILABLE
                       </span>
                     </label>
-
-                    {/* Option 3: PayPal (Not Connected State) */}
-                    <div className="p-3.5 rounded-xl border border-white/5 bg-[#060D17]/50 opacity-60 flex items-center justify-between cursor-not-allowed">
-                      <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 rounded-full border border-slate-600 flex items-center justify-center" />
-                        <div>
-                          <span className="text-xs font-bold text-slate-300 block">PayPal</span>
-                          <span className="text-[11px] text-slate-500">Official PayPal Business Gateway</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded font-mono">
-                        PAYPAL — NOT CONNECTED
-                      </span>
-                    </div>
                   </div>
                 </div>
 
                 {/* Submit Action */}
-                <div className="pt-4">
+                <div className="pt-3">
                   <button
                     type="submit"
                     disabled={loading || cart.length === 0}
-                    className="w-full py-4 px-6 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] active:scale-[0.99] text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full py-3.5 px-6 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] active:scale-[0.99] text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>CONTINUE TO PAYMENT INSTRUCTIONS</span>
+                        <span>PROCEED TO PAYMENT SETTLEMENT</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
+                  <p className="text-[11px] text-slate-400 text-center mt-2.5">
+                    No account required &bull; Direct dealer delivery arranged upon payment verification.
+                  </p>
                 </div>
               </form>
             </div>
 
             {/* Right: Order Summary Sidebar */}
-            <div className="lg:col-span-5 bg-[#0B1826] rounded-2xl p-6 sm:p-7 border border-white/10 shadow-2xl space-y-5">
-              <h3 className="text-base font-bold text-white font-['Cabinet_Grotesk'] pb-3 border-b border-white/10">
-                Order Items ({cart.length})
-              </h3>
+            <div className="lg:col-span-5 bg-[#0B1826] rounded-2xl p-6 sm:p-7 border border-white/10 shadow-xl space-y-6 lg:sticky lg:top-24">
+              <div className="border-b border-white/10 pb-4">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#0088FF] font-bold block mb-1">
+                  ORDER CART REVIEW
+                </span>
+                <h3 className="text-lg font-bold text-white font-['Cabinet_Grotesk']">
+                  Order Summary ({cart.length} {cart.length === 1 ? 'item' : 'items'})
+                </h3>
+              </div>
 
+              {/* Items List */}
               {cart.length === 0 ? (
-                <p className="text-xs text-slate-400">Your cart is empty.</p>
+                <div className="py-8 text-center text-xs text-slate-400">
+                  Your cart is empty.{' '}
+                  <button onClick={() => onNavigate('shop')} className="text-[#0088FF] underline font-bold">
+                    Add outboard motors
+                  </button>
+                </div>
               ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                   {cart.map((item) => (
                     <div key={item.productId} className="flex gap-3 items-center p-2.5 rounded-lg bg-[#060D17]">
                       <img
@@ -633,11 +682,91 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
               <Info className="w-4 h-4 text-[#0088FF] shrink-0 mt-0.5" />
               <div>
                 <strong className="text-white">Payment Verification Notice:</strong> Please include your Order Reference{' '}
-                <span className="font-mono text-[#38BDF8] font-bold">{createdOrderId}</span> in your transfer memo. After sending, upload a screenshot or photo of your receipt below. Our team verifies submissions promptly.
+                <span className="font-mono text-[#38BDF8] font-bold">{createdOrderId}</span> in your payment transfer memo or notes. After initiating payment, upload a screenshot or photo of your receipt below. Our team verifies submissions promptly.
               </div>
             </div>
 
-            {/* METHOD A: BANK TRANSFER DETAILS */}
+            {/* METHOD A: BITCOIN (BTC) SETTLEMENT DETAILS */}
+            {selectedMethod === 'bitcoin' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white font-['Cabinet_Grotesk'] flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-[#F7931A]/20 text-[#F7931A] flex items-center justify-center">
+                      <Bitcoin className="w-4 h-4 text-[#F7931A]" />
+                    </div>
+                    <span>Official BlueWave Bitcoin (BTC) Settlement Details</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleCopyBtc}
+                    className="text-xs text-[#F7931A] hover:underline flex items-center gap-1 cursor-pointer bg-[#F7931A]/10 border border-[#F7931A]/30 px-2.5 py-1 rounded-md"
+                  >
+                    {copiedBtc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span className={copiedBtc ? 'text-emerald-400 font-bold' : ''}>
+                      {copiedBtc ? 'Copied Wallet Address!' : 'Copy Bitcoin Address'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Bitcoin Payment Card */}
+                <div className="bg-[#060D17] p-5 sm:p-6 rounded-xl border border-[#F7931A]/30 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#F7931A] block">
+                        BITCOIN NETWORK (NATIVE BTC)
+                      </span>
+                      <span className="text-xs text-slate-300">
+                        Send the exact USD equivalent of <strong className="text-white font-mono text-sm">{formatMoney(cartTotal)}</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs bg-[#0F2238] px-3 py-1.5 rounded-lg border border-white/10">
+                      <span className="text-slate-400">Order Ref:</span>
+                      <span className="font-mono font-bold text-white">{createdOrderId}</span>
+                    </div>
+                  </div>
+
+                  {/* Wallet Address Box with Copy */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                      <span>Official Public Bitcoin Wallet Address:</span>
+                      <span className="text-[11px] text-amber-400 font-mono">BTC Network Only</span>
+                    </label>
+                    <div className="flex items-center gap-2 bg-[#050B14] border border-[#F7931A]/40 rounded-lg p-3">
+                      <div className="w-8 h-8 rounded-md bg-[#F7931A]/20 text-[#F7931A] flex items-center justify-center shrink-0">
+                        <QrCode className="w-4 h-4 text-[#F7931A]" />
+                      </div>
+                      <span className="font-mono text-xs sm:text-sm text-amber-200 select-all break-all flex-1">
+                        {bitcoinDetails.walletAddress}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCopyBtc}
+                        className="p-2 bg-[#F7931A]/20 hover:bg-[#F7931A]/30 text-[#F7931A] rounded-md transition-colors cursor-pointer shrink-0"
+                        title="Copy Bitcoin Address"
+                      >
+                        {copiedBtc ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="p-3.5 rounded-lg bg-[#0A1828] border border-white/10 text-xs space-y-1.5 text-slate-300">
+                    <div className="font-bold text-white flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 text-[#F7931A]" />
+                      <span>Payment Instructions:</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-slate-300">
+                      {bitcoinDetails.instructions}
+                    </p>
+                    <p className="text-[10px] text-slate-400 pt-1 border-t border-white/5">
+                      Tip: Once the transaction is broadcast from your Bitcoin wallet or exchange, copy the Transaction Hash (TxID) and paste it into the notes field below, or take a screenshot and upload it for prompt verification by our operations team.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* METHOD B: BANK TRANSFER DETAILS */}
             {selectedMethod === 'bank_transfer' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -647,7 +776,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                   </h3>
                   <button
                     onClick={handleCopyAccount}
-                    className="text-xs text-[#0088FF] hover:underline flex items-center gap-1"
+                    className="text-xs text-[#0088FF] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     {copiedAccount ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedAccount ? 'Copied Account' : 'Copy Account #'}</span>
@@ -682,33 +811,20 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
               </div>
             )}
 
-            {/* METHOD B: BITCOIN PAYMENT DETAILS */}
-            {selectedMethod === 'bitcoin' && (
+            {/* METHOD C: PAYPAL INSTRUCTIONS */}
+            {selectedMethod === 'paypal' && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-white font-['Cabinet_Grotesk']">
-                  Bitcoin Payment Details
+                <h3 className="text-lg font-bold text-white font-['Cabinet_Grotesk'] flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-[#0088FF]" />
+                  <span>PayPal Invoice Settlement</span>
                 </h3>
 
                 <div className="p-5 rounded-xl bg-[#060D17] border border-white/10 space-y-3 text-xs">
-                  <div>
-                    <span className="text-slate-400 block mb-1">Send Payment to Official Bitcoin Wallet:</span>
-                    <div className="flex items-center gap-2 bg-[#0B1826] p-3 rounded-lg border border-white/10">
-                      <span className="font-mono text-xs sm:text-sm text-slate-100 break-all select-all flex-1">
-                        {btcWalletAddress}
-                      </span>
-                      <button
-                        onClick={handleCopyWallet}
-                        className="px-3 py-1.5 rounded bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold shrink-0 flex items-center gap-1"
-                      >
-                        {copiedWallet ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedWallet ? 'Copied' : 'Copy'}</span>
-                      </button>
-                    </div>
-                  </div>
-
+                  <p className="text-slate-300 leading-relaxed">
+                    A formal BlueWave PayPal Business invoice and checkout link for <strong className="text-white">{formatMoney(cartTotal)}</strong> will be sent to your email (<strong className="text-[#0088FF]">{email}</strong>) referencing order <strong className="font-mono text-white">{createdOrderId}</strong>.
+                  </p>
                   <p className="text-[11px] text-slate-400">
-                    Send the USD equivalent of <strong className="text-white">{formatMoney(cartTotal)}</strong>. Include reference{' '}
-                    <strong className="text-[#0088FF]">{createdOrderId}</strong> in your transaction notes.
+                    If you have already completed payment via PayPal, you may upload your confirmation screenshot below to expedite order fulfillment.
                   </p>
                 </div>
               </div>
@@ -718,13 +834,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
             <form onSubmit={handleSubmitReceipt} className="space-y-5 pt-4 border-t border-white/10">
               <div>
                 <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF] block mb-1">
-                  SUBMIT RECEIPT FOR VERIFICATION
+                  SUBMIT RECEIPT / VERIFICATION PROOF (OPTIONAL / RECOMMENDED)
                 </span>
                 <h3 className="text-lg font-bold text-white font-['Cabinet_Grotesk']">
-                  Upload Payment Screenshot or Wire Confirmation
+                  {selectedMethod === 'bitcoin'
+                    ? 'Upload Transaction Screenshot or Enter Transaction Hash'
+                    : 'Upload Payment Screenshot or Wire Confirmation'}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Upload a photo or screenshot showing the transfer details, bank confirmation code, or Bitcoin transaction hash.
+                  {selectedMethod === 'bitcoin'
+                    ? 'Upload a screenshot from your Bitcoin wallet or exchange showing the transaction, or provide the TxID / Hash below.'
+                    : 'Upload a photo or screenshot showing the transfer details, bank confirmation code, or transaction receipt.'}
                 </p>
               </div>
 
@@ -754,7 +874,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                     <button
                       type="button"
                       onClick={() => setReceiptImage(null)}
-                      className="text-slate-400 hover:text-white"
+                      className="text-slate-400 hover:text-white cursor-pointer"
                     >
                       Remove
                     </button>
@@ -762,35 +882,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
                 )}
               </div>
 
-              {/* Customer Notes */}
+              {/* Customer Notes / TxID */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Customer Notes / Bank Wire Reference (Optional)
+                  {selectedMethod === 'bitcoin'
+                    ? 'Bitcoin Transaction ID (TxID) / Hash / Sender Notes'
+                    : 'Customer Notes / Bank Wire Reference (Optional)'}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Sent via Chase wire reference #981244 or Bitcoin TX ID..."
+                  placeholder={
+                    selectedMethod === 'bitcoin'
+                      ? 'Paste your Bitcoin TxID / transaction hash or wallet memo here...'
+                      : 'e.g. Sent via Chase wire reference #981244...'
+                  }
                   value={customerNotes}
                   onChange={(e) => setCustomerNotes(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF] resize-y"
                 />
               </div>
 
-              {/* Submit Receipt Action */}
-              <button
-                type="submit"
-                disabled={receiptSubmitting || !receiptImage}
-                className="w-full py-4 px-6 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] active:scale-[0.99] text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {receiptSubmitting ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>SUBMIT RECEIPT &bull; QUEUE FOR VERIFICATION</span>
-                    <CheckCircle2 className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="submit"
+                  disabled={receiptSubmitting || (!receiptImage && !customerNotes.trim())}
+                  className="flex-1 py-4 px-6 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] active:scale-[0.99] text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-xl shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {receiptSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>SUBMIT PROOF &bull; QUEUE FOR VERIFICATION</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipReceiptForNow}
+                  className="py-4 px-6 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-300 hover:text-white font-bold text-xs uppercase tracking-wider transition-colors border border-white/10 cursor-pointer"
+                >
+                  FINISH &amp; I'LL SEND PROOF LATER
+                </button>
+              </div>
 
               <p className="text-[11px] text-slate-400 text-center">
                 Submitting a receipt queues your order for dealership review. Orders are marked PAID once verified by BlueWave accounts.
@@ -800,38 +936,57 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
         )}
 
         {/* ======================================================== */}
-        {/* STEP 3: ORDER CONFIRMATION & VERIFICATION QUEUE */}
+        {/* STEP 3: ORDER CONFIRMATION */}
         {/* ======================================================== */}
         {step === 'confirmation' && createdOrderId && (
-          <div className="max-w-2xl mx-auto bg-[#0B1826] rounded-2xl p-8 sm:p-10 border border-white/15 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-[#0088FF]/20 border border-[#0088FF]/40 text-[#0088FF] flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="max-w-2xl mx-auto bg-[#0B1826] rounded-2xl p-6 sm:p-10 border border-white/15 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+              <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div>
-              <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-700/50 px-3 py-1 rounded-full uppercase tracking-wider">
-                PAYMENT RECEIPT SUBMITTED
+              <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF] block mb-1">
+                ORDER RECEIVED &bull; PENDING VERIFICATION
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Cabinet_Grotesk'] mt-3">
-                Order Registered #{createdOrderId}
+              <h2 className="text-2xl sm:text-3xl font-black text-white font-['Cabinet_Grotesk']">
+                Thank You For Your Order!
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 mt-2 max-w-md mx-auto leading-relaxed">
-                Thank you, <strong className="text-white">{fullName}</strong>. Your payment receipt has been uploaded and our accounts department is verifying the transaction.
+              <p className="text-xs text-slate-300 mt-2 max-w-md mx-auto">
+                Your order has been recorded in the BlueWave system. Our marine operations team will review your payment and coordinate transport logistics.
               </p>
             </div>
 
-            {/* Status Summary Card */}
-            <div className="p-5 rounded-xl bg-[#060D17] border border-white/10 text-left text-xs space-y-2.5 max-w-md mx-auto font-mono">
+            {/* Order Reference Card */}
+            <div className="p-4 rounded-xl bg-[#060D17] border border-white/10 max-w-md mx-auto text-center">
+              <span className="text-[11px] text-slate-400 block mb-0.5">Your Order Reference Number</span>
+              <span className="text-2xl font-black text-[#0099FF] font-mono tracking-wider block">
+                {createdOrderId}
+              </span>
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Please save this reference number for all communications with our support team.
+              </span>
+            </div>
+
+            {/* Order Status Details */}
+            <div className="text-xs text-slate-300 max-w-md mx-auto bg-[#07111D] p-4 rounded-xl border border-white/5 space-y-2 text-left">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-400">Order Reference:</span>
-                <span className="text-white font-bold">{createdOrderId}</span>
+                <span className="text-slate-400">Payment Method:</span>
+                <span className="text-white font-bold">
+                  {selectedMethod === 'bitcoin'
+                    ? 'Bitcoin (BTC)'
+                    : selectedMethod === 'bank_transfer'
+                    ? 'Bank Wire Transfer'
+                    : 'PayPal'}
+                </span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-slate-400">Payment Status:</span>
-                <span className="text-amber-400 font-bold">AWAITING VERIFICATION</span>
+                <span className="text-amber-400 font-bold">
+                  {receiptSuccess ? 'AWAITING VERIFICATION' : 'AWAITING PAYMENT'}
+                </span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-slate-400">Order Status:</span>
+                <span className="text-slate-400">Fulfillment Status:</span>
                 <span className="text-white font-bold">NEW &bull; PROCESSING</span>
               </div>
               <div className="flex justify-between">
@@ -842,48 +997,24 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ onNavigate, onOpenAu
 
             {/* Direct Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-              {currentUser ? (
-                <button
-                  onClick={() => onNavigate('account')}
-                  className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>VIEW MY ORDER IN ACCOUNT</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      if (onOpenAuth) onOpenAuth('register');
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <span>CREATE OPTIONAL ACCOUNT</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onNavigate('shop')}
-                    className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0B1826] hover:bg-[#122438] text-white text-xs font-bold uppercase tracking-wider transition-colors border border-white/10"
-                  >
-                    CONTINUE SHOPPING
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => onNavigate('shop')}
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-[#0088FF]/30 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>CONTINUE SHOPPING</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
 
               <button
                 onClick={() => onNavigate('contact')}
                 className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#0E2034] hover:bg-[#152e4a] text-slate-200 text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 cursor-pointer"
               >
-                CONTACT BLUEWAVE
+                CONTACT BLUEWAVE SUPPORT
               </button>
             </div>
           </div>
         )}
 
-      </div>
-
-      <div className="mt-16">
-        <DealerBrandsBar />
       </div>
     </div>
   );

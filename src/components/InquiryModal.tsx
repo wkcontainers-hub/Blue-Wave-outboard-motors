@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Send, CheckCircle2, MessageSquare, Anchor, AlertCircle } from 'lucide-react';
 import { OutboardMotorListing } from '../types/inventory.ts';
-import { useStore } from '../context/StoreContext.tsx';
 import { getApiUrl } from '../utils/api.ts';
 
 interface InquiryModalProps {
@@ -10,10 +9,9 @@ interface InquiryModalProps {
 }
 
 export const InquiryModal: React.FC<InquiryModalProps> = ({ motor, onClose }) => {
-  const { currentUser } = useStore();
-  const [fullName, setFullName] = useState(currentUser?.fullName || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -27,7 +25,7 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ motor, onClose }) =>
       setError('Please enter your question.');
       return;
     }
-    if (!email.trim() && !currentUser) {
+    if (!email.trim()) {
       setError('Please provide your email address.');
       return;
     }
@@ -125,32 +123,30 @@ export const InquiryModal: React.FC<InquiryModalProps> = ({ motor, onClose }) =>
               </div>
             )}
 
-            {!currentUser && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Your Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. John Miller"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
-                  />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Your Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. John Miller"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
+                />
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
+                />
+              </div>
+            </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">

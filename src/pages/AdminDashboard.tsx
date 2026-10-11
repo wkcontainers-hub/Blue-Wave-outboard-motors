@@ -31,6 +31,13 @@ import {
   RefreshCw,
   FileCheck,
   Layers,
+  Phone,
+  Mail,
+  MessageSquare,
+  MapPin,
+  Copy,
+  Check,
+  FileText,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
@@ -113,6 +120,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const [orders, setOrders] = useState<any[]>([]);
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [editingDelivery, setEditingDelivery] = useState(false);
+  const [deliveryAddressInput, setDeliveryAddressInput] = useState('');
+  const [orderNotesInput, setOrderNotesInput] = useState('');
+  const [copiedPhone, setCopiedPhone] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
 
   // Customers State
   const [customers, setCustomers] = useState<any[]>([]);
@@ -417,20 +430,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     }
   };
 
+  // Open Order Details Modal
+  const handleOpenOrderDetails = (o: any) => {
+    setSelectedOrder(o);
+    setDeliveryAddressInput(o.streetAddress || o.deliveryAddress || '');
+    setOrderNotesInput(o.notes || '');
+    setEditingDelivery(false);
+  };
+
   // Update Order Status
-  const handleUpdateOrderStatus = async (orderId: string, orderStatus: string, paymentStatus?: string) => {
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    orderStatus?: string,
+    paymentStatus?: string,
+    deliveryAddress?: string,
+    notes?: string
+  ) => {
+    setIsUpdatingOrder(true);
     try {
-      await fetch(getApiUrl(`/api/admin/orders/${orderId}/status`), {
+      const payload: any = {};
+      if (orderStatus) payload.orderStatus = orderStatus;
+      if (paymentStatus) payload.paymentStatus = paymentStatus;
+      if (deliveryAddress !== undefined) payload.deliveryAddress = deliveryAddress;
+      if (notes !== undefined) payload.notes = notes;
+
+      const res = await fetch(getApiUrl(`/api/admin/orders/${orderId}/status`), {
         method: 'PATCH',
         headers: getHeaders(),
-        body: JSON.stringify({ orderStatus, paymentStatus }),
+        body: JSON.stringify(payload),
       });
-      loadOrders();
-      loadStats();
-      refreshProducts();
+
+      if (res.ok) {
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder((prev: any) => ({
+            ...prev,
+            ...(orderStatus ? { orderStatus } : {}),
+            ...(paymentStatus ? { paymentStatus } : {}),
+            ...(deliveryAddress !== undefined ? { deliveryAddress } : {}),
+            ...(notes !== undefined ? { notes } : {}),
+          }));
+        }
+        await loadOrders();
+        await loadStats();
+        await refreshProducts();
+      }
     } catch (e) {
       console.warn('Failed to update order status', e);
+    } finally {
+      setIsUpdatingOrder(false);
     }
+  };
+
+  const handleSaveOrderDeliveryAndNotes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+    await handleUpdateOrderStatus(
+      selectedOrder.id,
+      undefined,
+      undefined,
+      deliveryAddressInput,
+      orderNotesInput
+    );
+    setEditingDelivery(false);
   };
 
   // Admin Reply to Inbox Message
@@ -861,14 +922,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
         {/* ======================================================== */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between bg-[#0B1826] p-5 rounded-2xl border border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#0B1826] p-5 rounded-2xl border border-white/10 gap-4">
               <div>
                 <h2 className="text-xl font-black text-white font-['Cabinet_Grotesk']">
                   Customer Orders ({orders.length})
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Update fulfillment statuses: NEW, PROCESSING, READY FOR DELIVERY, SHIPPED, DELIVERED, COMPLETED.
+                  Manage guest orders, verify payment receipts, update delivery addresses, and coordinate marine freight.
                 </p>
+              </div>
+
+              {/* Order Search */}
+              <div className="relative max-w-xs w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search order #, customer, email, phone..."
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#0088FF]"
+                />
               </div>
             </div>
 
@@ -878,28 +951,63 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                   <thead className="bg-[#07111D] border-b border-white/10 text-slate-400 uppercase font-mono text-[10px]">
                     <tr>
                       <th className="p-3.5">Order #</th>
-                      <th className="p-3.5">Customer</th>
-                      <th className="p-3.5">Items</th>
-                      <th className="p-3.5">Total</th>
+                      <th className="p-3.5">Customer Contact</th>
+                      <th className="p-3.5">Products Ordered</th>
+                      <th className="p-3.5">Order Total</th>
                       <th className="p-3.5">Payment Method</th>
+                      <th className="p-3.5">Receipt</th>
                       <th className="p-3.5">Payment Status</th>
                       <th className="p-3.5">Fulfillment Status</th>
                       <th className="p-3.5">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 text-slate-300">
-                    {orders.map((o) => (
+                    {orders
+                      .filter((o) => {
+                        if (!orderSearch.trim()) return true;
+                        const q = orderSearch.toLowerCase();
+                        return (
+                          o.id.toLowerCase().includes(q) ||
+                          o.customerName?.toLowerCase().includes(q) ||
+                          o.email?.toLowerCase().includes(q) ||
+                          o.phone?.toLowerCase().includes(q) ||
+                          o.paymentMethod?.toLowerCase().includes(q) ||
+                          o.orderStatus?.toLowerCase().includes(q) ||
+                          o.paymentStatus?.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((o) => (
                       <tr key={o.id} className="hover:bg-white/[0.02]">
-                        <td className="p-3.5 font-mono font-bold text-white">{o.id}</td>
+                        <td className="p-3.5 font-mono font-bold text-white">
+                          <button
+                            onClick={() => handleOpenOrderDetails(o)}
+                            className="text-[#38BDF8] hover:underline"
+                          >
+                            {o.id}
+                          </button>
+                        </td>
                         <td className="p-3.5">
                           <strong className="text-white block">{o.customerName}</strong>
-                          <span className="text-[11px] text-slate-400">{o.email}</span>
+                          <span className="text-[11px] text-slate-400 block">{o.email}</span>
+                          {o.phone && (
+                            <span className="text-[10px] text-slate-500 font-mono block">{o.phone}</span>
+                          )}
                         </td>
                         <td className="p-3.5 max-w-xs truncate">
-                          {o.items.map((i: any) => `${i.brand} ${i.model} (${i.quantity})`).join(', ')}
+                          {o.items.map((i: any) => `${i.brand} ${i.model} (x${i.quantity})`).join(', ')}
                         </td>
                         <td className="p-3.5 font-mono font-bold text-white">{formatMoney(o.total)}</td>
                         <td className="p-3.5">{o.paymentMethod}</td>
+                        <td className="p-3.5">
+                          {o.receipts && o.receipts.length > 0 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50 flex items-center gap-1 w-max">
+                              <FileCheck className="w-3 h-3" />
+                              <span>{o.receipts.length} Receipt{o.receipts.length > 1 ? 's' : ''}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-mono">None</span>
+                          )}
+                        </td>
                         <td className="p-3.5">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
@@ -931,11 +1039,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                         </td>
                         <td className="p-3.5">
                           <button
-                            onClick={() => setSelectedOrder(o)}
-                            className="p-1.5 rounded bg-white/5 hover:bg-[#0088FF] text-white"
+                            onClick={() => handleOpenOrderDetails(o)}
+                            className="px-2.5 py-1 rounded bg-[#0088FF]/15 hover:bg-[#0088FF] text-[#38BDF8] hover:text-white font-bold text-xs flex items-center gap-1 transition-colors"
                             title="View Full Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
+                            <span>Manage</span>
                           </button>
                         </td>
                       </tr>
@@ -2915,6 +3024,536 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: ADMINISTRATOR ORDER DETAILS & MANAGEMENT */}
+      {/* ======================================================== */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-[#0B1826] rounded-2xl border border-white/20 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden text-white my-auto">
+            
+            {/* Header */}
+            <div className="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between bg-[#07111D] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#0088FF]/15 border border-[#0088FF]/30 text-[#0088FF] flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-white font-['Cabinet_Grotesk']">
+                      Order Reference: <span className="text-[#38BDF8] font-mono">{selectedOrder.id}</span>
+                    </h3>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                        selectedOrder.paymentStatus === 'PAID'
+                          ? 'bg-emerald-950/80 border border-emerald-600/50 text-emerald-300'
+                          : selectedOrder.paymentStatus === 'PAYMENT REJECTED'
+                          ? 'bg-red-950/80 border border-red-600/50 text-red-300'
+                          : 'bg-amber-950/80 border border-amber-600/50 text-amber-300'
+                      }`}
+                    >
+                      {selectedOrder.paymentStatus}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#060D17] border border-white/15 text-slate-300">
+                      {selectedOrder.orderStatus}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Submitted on {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : 'Date N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+              
+              {/* Quick Contact & Customer Info Card */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#07111D] p-5 rounded-xl border border-white/10">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0088FF] block mb-2 font-['Cabinet_Grotesk']">
+                    CUSTOMER CONTACT INFORMATION
+                  </span>
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Full Customer Name</span>
+                      <strong className="text-white text-sm">{selectedOrder.customerName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Email Address</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <a
+                          href={`mailto:${selectedOrder.email}?subject=BlueWave Outboards Order #${selectedOrder.id} Update`}
+                          className="text-[#38BDF8] hover:underline flex items-center gap-1 font-medium"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>{selectedOrder.email}</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedOrder.email);
+                            setCopiedEmail(true);
+                            setTimeout(() => setCopiedEmail(false), 2000);
+                          }}
+                          className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                          title="Copy Email"
+                        >
+                          {copiedEmail ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Phone / WhatsApp</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <a
+                          href={`tel:${selectedOrder.phone}`}
+                          className="text-white hover:text-[#0088FF] flex items-center gap-1 font-mono font-medium"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-[#0088FF]" />
+                          <span>{selectedOrder.phone}</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedOrder.phone);
+                            setCopiedPhone(true);
+                            setTimeout(() => setCopiedPhone(false), 2000);
+                          }}
+                          className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                          title="Copy Phone"
+                        >
+                          {copiedPhone ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Contact Actions */}
+                <div className="border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-5 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block mb-2 font-['Cabinet_Grotesk']">
+                      DIRECT CUSTOMER OUTREACH
+                    </span>
+                    <p className="text-xs text-slate-400 mb-3">
+                      Communicate directly to verify transom dimensions, confirm bank wire receipts, or notify freight dispatch.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`mailto:${selectedOrder.email}?subject=Update regarding your BlueWave Order #${selectedOrder.id}`}
+                        className="px-3 py-1.5 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Email Customer</span>
+                      </a>
+                      <a
+                        href={`tel:${selectedOrder.phone}`}
+                        className="px-3 py-1.5 rounded-lg bg-[#0B1826] hover:bg-[#122438] border border-white/10 text-white text-xs font-bold flex items-center gap-1.5"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-[#0088FF]" />
+                        <span>Call Phone</span>
+                      </a>
+                      {selectedOrder.phone && (
+                        <a
+                          href={`https://wa.me/${selectedOrder.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 text-xs font-bold flex items-center gap-1.5"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-white/5 text-[11px] text-slate-400 flex items-center gap-1">
+                    <Shield className="w-3 h-3 text-[#0088FF]" />
+                    <span>Protected BlueWave Dealership Order Record</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Delivery Address & Instructions */}
+              <div className="bg-[#07111D] p-5 rounded-xl border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0088FF] flex items-center gap-1.5 font-['Cabinet_Grotesk']">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>DELIVERY &amp; FREIGHT DESTINATION</span>
+                  </span>
+                  <button
+                    onClick={() => setEditingDelivery(!editingDelivery)}
+                    className="text-xs text-[#0088FF] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    <span>{editingDelivery ? 'Cancel Edit' : 'Edit Delivery Details'}</span>
+                  </button>
+                </div>
+
+                {editingDelivery ? (
+                  <form onSubmit={handleSaveOrderDeliveryAndNotes} className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                        Delivery Address / Marina Slip
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryAddressInput}
+                        onChange={(e) => setDeliveryAddressInput(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                        Order Notes / Delivery Instructions
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={orderNotesInput}
+                        onChange={(e) => setOrderNotesInput(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs focus:ring-1 focus:ring-[#0088FF]"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingDelivery(false)}
+                        className="px-3 py-1.5 rounded-lg bg-white/5 text-xs text-slate-300 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isUpdatingOrder}
+                        className="px-4 py-1.5 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-xs font-bold text-white uppercase tracking-wider cursor-pointer"
+                      >
+                        Save Delivery Info
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Delivery Address:</span>
+                      <strong className="text-white text-sm block mt-0.5">
+                        {selectedOrder.deliveryAddress}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Delivery Instructions:</span>
+                      <p className="text-slate-300 text-xs italic mt-0.5">
+                        {selectedOrder.notes || 'None provided by customer.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Products Ordered */}
+              <div className="bg-[#07111D] p-5 rounded-xl border border-white/10 space-y-3">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0088FF] block font-['Cabinet_Grotesk']">
+                  PRODUCTS ORDERED ({selectedOrder.items?.length || 0})
+                </span>
+
+                <div className="space-y-2.5">
+                  {(selectedOrder.items || []).map((it: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-[#060D17] border border-white/5">
+                      <img
+                        src={getSafeImageUrl(it.photo)}
+                        alt={it.model}
+                        className="w-14 h-12 object-cover rounded bg-[#091522] border border-white/10 shrink-0"
+                        onError={handleImageError}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase text-[#0088FF]">{it.brand}</span>
+                          {it.horsepower && (
+                            <span className="text-[10px] font-mono text-slate-400">{it.horsepower} HP</span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold text-white truncate">{it.model}</h4>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {it.shaftLength && `${it.shaftLength} • `}
+                          {it.condition && `${it.condition} • `}
+                          Qty: <strong className="text-white">{it.quantity}</strong>
+                        </div>
+                      </div>
+                      <div className="text-right font-mono">
+                        <span className="text-xs font-bold text-white block">
+                          {formatMoney((it.price || 0) * (it.quantity || 1))}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          ({formatMoney(it.price || 0)} each)
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="pt-3 border-t border-white/10 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Subtotal</span>
+                    <span className="text-white font-mono">{formatMoney(selectedOrder.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Freight / Shipping</span>
+                    <span className="text-emerald-400 font-mono">
+                      {selectedOrder.shipping === 0 ? 'Complimentary / Included' : formatMoney(selectedOrder.shipping)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-base font-black text-white pt-2 border-t border-white/10">
+                    <span>Total Amount</span>
+                    <span className="text-[#0099FF] font-mono text-lg">{formatMoney(selectedOrder.total)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method & Receipts Section */}
+              <div className="bg-[#07111D] p-5 rounded-xl border border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0088FF] block font-['Cabinet_Grotesk']">
+                    PAYMENT SETTLEMENT &amp; RECEIPTS
+                  </span>
+                  <span className="text-xs font-mono text-slate-300">
+                    Method: <strong className="text-white">{selectedOrder.paymentMethod}</strong>
+                  </span>
+                </div>
+
+                {/* Receipts list */}
+                {selectedOrder.receipts && selectedOrder.receipts.length > 0 ? (
+                  <div className="space-y-3">
+                    <span className="text-xs text-slate-300 font-semibold block">
+                      Submitted Payment Receipts ({selectedOrder.receipts.length}):
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {selectedOrder.receipts.map((rcpt: any) => (
+                        <div key={rcpt.id} className="p-3.5 rounded-xl bg-[#060D17] border border-white/10 space-y-2.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-mono text-[11px] text-slate-400">
+                              Receipt ID: {rcpt.id?.slice(0, 10)}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                rcpt.status === 'Approved'
+                                  ? 'bg-emerald-950 text-emerald-300'
+                                  : rcpt.status === 'Rejected'
+                                  ? 'bg-red-950 text-red-300'
+                                  : 'bg-amber-950 text-amber-300'
+                              }`}
+                            >
+                              {rcpt.status}
+                            </span>
+                          </div>
+
+                          {/* Screenshot preview */}
+                          <div className="relative aspect-[16/10] rounded-lg overflow-hidden bg-black/60 border border-white/10">
+                            <img
+                              src={rcpt.receiptImage}
+                              alt="Payment receipt proof"
+                              className="w-full h-full object-contain"
+                            />
+                            <a
+                              href={rcpt.receiptImage}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 hover:bg-[#0088FF] text-white text-[10px] rounded font-bold flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>View Full Size</span>
+                            </a>
+                          </div>
+
+                          <div className="text-xs space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Amount:</span>
+                              <span className="text-white font-mono font-bold">{formatMoney(rcpt.amount)}</span>
+                            </div>
+                            {rcpt.customerNotes && (
+                              <p className="text-[11px] text-slate-300 italic bg-[#0B1826] p-2 rounded">
+                                "{rcpt.customerNotes}"
+                              </p>
+                            )}
+                            {rcpt.adminNotes && (
+                              <p className="text-[11px] text-emerald-300 bg-emerald-950/40 p-2 rounded border border-emerald-800/40">
+                                Auditor Note: {rcpt.adminNotes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-[#060D17] border border-white/5 text-center text-xs text-slate-400">
+                    No payment receipt uploaded by customer for this order yet.
+                  </div>
+                )}
+
+                {/* Quick Payment Status Buttons */}
+                <div className="pt-3 border-t border-white/10">
+                  <span className="text-[11px] text-slate-400 font-bold block mb-2">
+                    UPDATE PAYMENT STATUS:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={isUpdatingOrder}
+                      onClick={() => handleUpdateOrderStatus(selectedOrder.id, undefined, 'PAID')}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all ${
+                        selectedOrder.paymentStatus === 'PAID'
+                          ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                          : 'bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300'
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Confirm Payment (Mark as PAID)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingOrder}
+                      onClick={() => handleUpdateOrderStatus(selectedOrder.id, undefined, 'AWAITING VERIFICATION')}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                        selectedOrder.paymentStatus === 'AWAITING VERIFICATION'
+                          ? 'bg-amber-600 text-white ring-2 ring-amber-400'
+                          : 'bg-amber-950/70 hover:bg-amber-900 border border-amber-700/60 text-amber-300'
+                      }`}
+                    >
+                      Awaiting Verification
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingOrder}
+                      onClick={() => handleUpdateOrderStatus(selectedOrder.id, undefined, 'AWAITING PAYMENT')}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                        selectedOrder.paymentStatus === 'AWAITING PAYMENT'
+                          ? 'bg-slate-700 text-white ring-2 ring-slate-400'
+                          : 'bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      Awaiting Payment
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isUpdatingOrder}
+                      onClick={() => handleUpdateOrderStatus(selectedOrder.id, undefined, 'PAYMENT REJECTED')}
+                      className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                        selectedOrder.paymentStatus === 'PAYMENT REJECTED'
+                          ? 'bg-red-600 text-white ring-2 ring-red-400'
+                          : 'bg-red-950/70 hover:bg-red-900 border border-red-700/60 text-red-300'
+                      }`}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Reject Payment</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fulfillment & Delivery Actions */}
+              <div className="bg-[#07111D] p-5 rounded-xl border border-white/10 space-y-3">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0088FF] block font-['Cabinet_Grotesk']">
+                  FULFILLMENT &amp; DELIVERY STATUS
+                </span>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isUpdatingOrder}
+                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'PROCESSING')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                      selectedOrder.orderStatus === 'PROCESSING'
+                        ? 'bg-[#0088FF] text-white'
+                        : 'bg-[#060D17] hover:bg-[#0088FF]/20 border border-white/10 text-slate-300'
+                    }`}
+                  >
+                    Processing
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUpdatingOrder}
+                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'SHIPPED')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all flex items-center gap-1.5 ${
+                      selectedOrder.orderStatus === 'SHIPPED'
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-[#060D17] hover:bg-sky-900/30 border border-white/10 text-slate-300'
+                    }`}
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Shipped</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUpdatingOrder}
+                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'DELIVERED')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                      selectedOrder.orderStatus === 'DELIVERED'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[#060D17] hover:bg-emerald-900/30 border border-white/10 text-slate-300'
+                    }`}
+                  >
+                    Delivered
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUpdatingOrder}
+                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'COMPLETED')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                      selectedOrder.orderStatus === 'COMPLETED'
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-[#060D17] hover:bg-teal-900/30 border border-white/10 text-slate-300'
+                    }`}
+                  >
+                    Completed
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUpdatingOrder}
+                    onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'CANCELLED')}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                      selectedOrder.orderStatus === 'CANCELLED'
+                        ? 'bg-rose-700 text-white'
+                        : 'bg-[#060D17] hover:bg-rose-950/40 border border-rose-900/40 text-rose-300'
+                    }`}
+                  >
+                    Cancel Order
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-white/10 bg-[#07111D] flex items-center justify-between shrink-0 text-xs">
+              <span className="text-slate-400">
+                Order #{selectedOrder.id} &bull; {selectedOrder.customerName}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="px-5 py-2 rounded-lg bg-[#0088FF] hover:bg-[#0074DB] text-white font-bold text-xs uppercase tracking-wider cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+
           </div>
         </div>
       )}

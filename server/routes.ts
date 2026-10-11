@@ -48,76 +48,33 @@ export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction
 }
 
 // ----------------------------------------------------
-// 1. AUTHENTICATION & CUSTOMER ACCOUNTS
+// 1. ADMINISTRATOR AUTHENTICATION (Customer auth removed)
 // ----------------------------------------------------
 
-apiRouter.post('/auth/register', (req, res) => {
-  const { email, password, fullName, phone, address, city, state, zipCode } = req.body;
-  if (!email || !password || !fullName) {
-    return res.status(400).json({ error: 'Full name, email, and password are required' });
-  }
-
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase().trim());
-  if (existing) {
-    return res.status(400).json({ error: 'An account with this email address already exists' });
-  }
-
-  const userId = 'bw_usr_' + crypto.randomBytes(12).toString('hex');
-  const passwordHash = hashPassword(password);
-  const now = new Date().toISOString();
-
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, role, full_name, phone, created_at)
-    VALUES (?, ?, ?, 'customer', ?, ?, ?)
-  `).run(userId, email.toLowerCase().trim(), passwordHash, fullName.trim(), phone || '', now);
-
-  db.prepare(`
-    INSERT INTO customer_profiles (user_id, delivery_address, city, state, zip_code, country, billing_info_json, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'United States', ?, ?)
-  `).run(userId, address || '', city || '', state || '', zipCode || '', JSON.stringify({}), now);
-
-  const token = createSession(userId, email.toLowerCase().trim(), 'customer');
-
-  res.json({
-    token,
-    user: {
-      id: userId,
-      email: email.toLowerCase().trim(),
-      fullName: fullName.trim(),
-      phone: phone || '',
-      role: 'customer',
-      profile: {
-        deliveryAddress: address || '',
-        city: city || '',
-        state: state || '',
-        zipCode: zipCode || '',
-        country: 'United States',
-        tutorialCompleted: false,
-      },
-    },
+apiRouter.post('/auth/register', (_req, res) => {
+  return res.status(403).json({
+    error: 'Customer registration is disabled. BlueWave Outboard Motors operates via direct guest checkout.'
   });
 });
 
 apiRouter.post('/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email/Username and password are required' });
+    return res.status(400).json({ error: 'Username/Email and password are required' });
   }
 
   const cleanEmail = email.toLowerCase().trim();
   // Support 'admin' as shortcut for admin login
-  let user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail) as any;
-  if (!user && cleanEmail === 'admin') {
+  let user = db.prepare("SELECT * FROM users WHERE email = ? AND role = 'admin'").get(cleanEmail) as any;
+  if (!user && (cleanEmail === 'admin' || cleanEmail === 'admin@bluewaveoutboards.com')) {
     user = db.prepare("SELECT * FROM users WHERE role = 'admin' LIMIT 1").get() as any;
   }
 
-  if (!user || !verifyPassword(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid email/username or password' });
+  if (!user || user.role !== 'admin' || !verifyPassword(password, user.password_hash)) {
+    return res.status(401).json({ error: 'Invalid administrator credentials' });
   }
 
-  const profile = db.prepare('SELECT * FROM customer_profiles WHERE user_id = ?').get(user.id) as any;
-
-  const token = createSession(user.id, user.email, user.role);
+  const token = createSession(user.id, user.email, 'admin');
 
   res.json({
     token,
@@ -126,26 +83,14 @@ apiRouter.post('/auth/login', (req, res) => {
       email: user.email,
       fullName: user.full_name,
       phone: user.phone || '',
-      role: user.role,
-      profile: profile
-        ? {
-            deliveryAddress: profile.delivery_address || '',
-            city: profile.city || '',
-            state: profile.state || '',
-            zipCode: profile.zip_code || '',
-            country: profile.country || 'United States',
-            tutorialCompleted: Boolean(profile.tutorial_completed),
-          }
-        : null,
+      role: 'admin',
     },
   });
 });
 
-apiRouter.get('/auth/me', requireAuth, (req: AuthRequest, res) => {
-  const user = db.prepare('SELECT id, email, role, full_name, phone, created_at FROM users WHERE id = ?').get(req.user!.userId) as any;
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
-  const profile = db.prepare('SELECT * FROM customer_profiles WHERE user_id = ?').get(user.id) as any;
+apiRouter.get('/auth/me', requireAdmin, (req: AuthRequest, res) => {
+  const user = db.prepare("SELECT id, email, role, full_name, phone, created_at FROM users WHERE id = ? AND role = 'admin'").get(req.user!.userId) as any;
+  if (!user) return res.status(404).json({ error: 'Administrator session not found' });
 
   res.json({
     user: {
@@ -153,17 +98,7 @@ apiRouter.get('/auth/me', requireAuth, (req: AuthRequest, res) => {
       email: user.email,
       fullName: user.full_name,
       phone: user.phone || '',
-      role: user.role,
-      profile: profile
-        ? {
-            deliveryAddress: profile.delivery_address || '',
-            city: profile.city || '',
-            state: profile.state || '',
-            zipCode: profile.zip_code || '',
-            country: profile.country || 'United States',
-            tutorialCompleted: Boolean(profile.tutorial_completed),
-          }
-        : null,
+      role: 'admin',
     },
   });
 });
@@ -426,7 +361,8 @@ apiRouter.post('/orders/checkout', optionalAuth, (req: AuthRequest, res) => {
   const verifiedOrderItems: any[] = [];
 
   for (const it of items) {
-    const p = db.prepare('SELECT * FROM products WHERE id = ?').get(it.productId) as any;
+    const prodId = String(it.productId || it.id || '');
+    const p = db.prepare('SELECT * FROM products WHERE id = ?').get(prodId) as any;
     if (!p) {
       return res.status(400).json({ error: `Product "${it.model || 'Unknown'}" is no longer in catalog` });
     }
@@ -708,30 +644,50 @@ apiRouter.post('/admin/payments/receipts/:id/review', requireAdmin, (req: AuthRe
 
 apiRouter.get('/admin/orders', requireAdmin, (_req, res) => {
   const rows = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all() as any[];
-  res.json(rows.map((o) => ({
-    id: o.id,
-    userId: o.user_id,
-    customerName: o.customer_name,
-    email: o.email,
-    phone: o.phone,
-    deliveryAddress: `${o.delivery_address}, ${o.city}, ${o.state} ${o.zip_code}`,
-    items: JSON.parse(o.items_json || '[]'),
-    subtotal: o.subtotal,
-    shipping: o.shipping,
-    total: o.total,
-    paymentMethod: o.payment_method,
-    paymentStatus: o.payment_status,
-    orderStatus: o.order_status,
-    notes: o.notes,
-    rejectionReason: o.rejection_reason,
-    createdAt: o.created_at,
-    updatedAt: o.updated_at,
-  })));
+  res.json(rows.map((o) => {
+    const receipts = db.prepare('SELECT * FROM payment_receipts WHERE order_id = ? ORDER BY created_at DESC').all(o.id) as any[];
+    return {
+      id: o.id,
+      userId: o.user_id,
+      customerName: o.customer_name,
+      email: o.email,
+      phone: o.phone,
+      deliveryAddress: `${o.delivery_address}, ${o.city}, ${o.state} ${o.zip_code}`,
+      streetAddress: o.delivery_address,
+      city: o.city,
+      state: o.state,
+      zipCode: o.zip_code,
+      country: o.country,
+      items: JSON.parse(o.items_json || '[]'),
+      subtotal: o.subtotal,
+      shipping: o.shipping,
+      total: o.total,
+      paymentMethod: o.payment_method,
+      paymentStatus: o.payment_status,
+      orderStatus: o.order_status,
+      notes: o.notes,
+      rejectionReason: o.rejection_reason,
+      receipts: receipts.map((r) => ({
+        id: r.id,
+        paymentMethod: r.payment_method,
+        amount: r.amount,
+        receiptImage: r.receipt_image,
+        customerNotes: r.customer_notes,
+        status: r.status,
+        adminNotes: r.admin_notes,
+        reviewedBy: r.reviewed_by,
+        reviewedAt: r.reviewed_at,
+        createdAt: r.created_at,
+      })),
+      createdAt: o.created_at,
+      updatedAt: o.updated_at,
+    };
+  }));
 });
 
 apiRouter.patch('/admin/orders/:id/status', requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { orderStatus, paymentStatus } = req.body;
+  const { orderStatus, paymentStatus, deliveryAddress, notes } = req.body;
   const now = new Date().toISOString();
 
   if (orderStatus) {
@@ -750,6 +706,12 @@ apiRouter.patch('/admin/orders/:id/status', requireAdmin, (req, res) => {
         }
       }
     }
+  }
+  if (deliveryAddress) {
+    db.prepare('UPDATE orders SET delivery_address = ?, updated_at = ? WHERE id = ?').run(deliveryAddress, now, id);
+  }
+  if (notes !== undefined) {
+    db.prepare('UPDATE orders SET notes = ?, updated_at = ? WHERE id = ?').run(notes, now, id);
   }
 
   res.json({ success: true, message: 'Order status updated' });
@@ -1008,7 +970,7 @@ apiRouter.put('/admin/settings/business', requireAdmin, (req, res) => {
 apiRouter.get('/payments/methods', (_req, res) => {
   const row = db.prepare('SELECT data_json FROM payment_settings WHERE id = ?').get('default') as any;
   const config = row ? JSON.parse(row.data_json) : { methods: [] };
-  // Only expose enabled methods to public customers, hiding any secret fields
+  // Expose enabled payment methods with their customer-facing configurations
   const customerMethods = (config.methods || [])
     .filter((m: any) => m.enabled)
     .map((m: any) => ({
