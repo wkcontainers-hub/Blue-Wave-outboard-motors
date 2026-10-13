@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, Truck, Bitcoin } from 'lucide-react';
 import { useStore } from '../context/StoreContext.tsx';
 import { PageId } from './Header.tsx';
 import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
@@ -168,6 +168,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, onNavig
               <div className="p-2.5 rounded-lg bg-[#0B1826] border border-white/5 flex items-center gap-2 text-[11px] text-slate-300">
                 <ShieldCheck className="w-4 h-4 text-[#0088FF] shrink-0" />
                 <span>Verified Dealership Warranty &bull; Insured Delivery</span>
+              </div>
+
+              {/* Accepted Payment Methods */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
+                <span>Accepted Payments:</span>
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <span className="flex items-center gap-1 bg-[#F7931A]/10 text-[#F7931A] px-2 py-0.5 rounded border border-[#F7931A]/30 text-[10px]">
+                    <Bitcoin className="w-3 h-3 text-[#F7931A]" />
+                    <span>Bitcoin (BTC)</span>
+                  </span>
+                  <span className="bg-white/5 px-2 py-0.5 rounded border border-white/10 text-slate-300 text-[10px]">
+                    Bank Wire
+                  </span>
+                </div>
               </div>
 
               {/* BUY NOW Button */}

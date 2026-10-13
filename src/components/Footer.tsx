@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, Mail, MapPin, Clock, MessageSquare, Facebook, Instagram, ShieldCheck, Wrench, Truck, Lock, ArrowRight, ShoppingBag, Send, Headphones, Wrench as ToolsIcon } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, MessageSquare, Facebook, Instagram, ShieldCheck, Wrench, Truck, Lock, ArrowRight, ShoppingBag, Send, Headphones, Wrench as ToolsIcon, Bitcoin } from 'lucide-react';
 import { PageId } from './Header.tsx';
 import { BlueWaveFullBadge } from './BlueWaveLogo.tsx';
 import { useStore } from '../context/StoreContext.tsx';
@@ -364,8 +364,30 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenAdminLogin }) 
           </div>
         </div>
 
+        {/* Accepted Payment Methods Bar */}
+        <div className="pt-6 pb-2 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between text-xs gap-3">
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">Secure Settlement:</span>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F7931A]/10 border border-[#F7931A]/30 text-[#F7931A] font-semibold text-[11px]">
+                <Bitcoin className="w-3.5 h-3.5" />
+                <span>Bitcoin (BTC)</span>
+              </span>
+              <span className="px-2.5 py-1 rounded bg-white/[0.04] border border-white/10 text-slate-300 font-medium text-[11px]">
+                Bank Wire / ACH
+              </span>
+              <span className="px-2.5 py-1 rounded bg-white/[0.04] border border-white/10 text-slate-300 font-medium text-[11px]">
+                PayPal
+              </span>
+            </div>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            Official Dealership Verified Transactions &bull; Direct Settlement
+          </span>
+        </div>
+
         {/* Bottom Copyright & Admin Access */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
           <p>
             &copy; 2026 {businessInfo.businessName}. All rights reserved.
           </p>

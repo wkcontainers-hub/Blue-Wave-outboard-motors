@@ -1478,9 +1478,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                       <label className="block text-slate-400 mb-1">Public Bitcoin Wallet Address</label>
                       <input
                         type="text"
-                        value={method.config.walletAddress}
+                        value={method.config?.walletAddress || ''}
                         onChange={(e) => {
                           const copy = [...paymentConfig.methods];
+                          copy[idx].config = copy[idx].config || {};
                           copy[idx].config.walletAddress = e.target.value;
                           setPaymentConfig({ ...paymentConfig, methods: copy });
                         }}
