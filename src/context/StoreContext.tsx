@@ -10,6 +10,7 @@ import {
   SupportTicket,
 } from '../types/inventory.ts';
 import { getApiUrl, safeFetchJson } from '../utils/api.ts';
+import { FALLBACK_MOTORS, FALLBACK_PAYMENT_METHODS } from '../data/fallbackData.ts';
 
 const DEFAULT_BUSINESS_INFO: BusinessInfo = {
   businessName: 'BlueWave Outboard Motors',
@@ -171,12 +172,12 @@ const StoreContext = createContext<StoreContextType | null>(null);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(DEFAULT_BUSINESS_INFO);
-  const [motors, setMotors] = useState<OutboardMotorListing[]>([]);
-  const [loadingMotors, setLoadingMotors] = useState(true);
+  const [motors, setMotors] = useState<OutboardMotorListing[]>(FALLBACK_MOTORS);
+  const [loadingMotors, setLoadingMotors] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('bw_token'));
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>(FALLBACK_PAYMENT_METHODS);
   const [pagesContent, setPagesContent] = useState<PagesContent>(DEFAULT_PAGE_CONTENT);
 
   // Auth headers helper
@@ -209,7 +210,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoadingMotors(true);
     try {
       const res = await safeFetchJson<OutboardMotorListing[]>('/api/products');
-      if (res.ok && Array.isArray(res.data)) {
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         setMotors(res.data);
       }
     } catch (e) {
@@ -223,8 +224,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshPaymentMethods = useCallback(async () => {
     try {
       const res = await safeFetchJson<{ methods: PaymentMethodConfig[] }>('/api/payments/methods');
-      if (res.ok && res.data) {
-        setPaymentMethods(res.data.methods || []);
+      if (res.ok && res.data && Array.isArray(res.data.methods) && res.data.methods.length > 0) {
+        setPaymentMethods(res.data.methods);
       }
     } catch (e) {
       console.warn('Failed to load payment methods', e);
