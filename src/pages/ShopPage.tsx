@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { PageId } from '../components/Header.tsx';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
-import { useStore } from '../context/StoreContext.tsx';
+import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
 import { OutboardMotorListing } from '../types/inventory.ts';
 import { InquiryModal } from '../components/InquiryModal.tsx';
 import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
@@ -41,7 +41,8 @@ interface ShopPageProps {
 }
 
 export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) => {
-  const { motors, loadingMotors, addToCart, formatMoney } = useStore();
+  const { motors, loadingMotors, addToCart, formatMoney, pagesContent } = useStore();
+  const shopData = pagesContent?.shop || DEFAULT_PAGE_CONTENT.shop;
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,18 +137,19 @@ export const ShopPage: React.FC<ShopPageProps> = ({ onNavigate, onOpenCart }) =>
         {/* Header Section */}
         <div className="max-w-4xl mb-6">
           <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#0088FF] mb-2 block font-['Cabinet_Grotesk']">
-            BLUEWAVE OUTBOARD SHOWROOM &bull; U.S. INVENTORY
+            {shopData.badge || 'BLUEWAVE OUTBOARD SHOWROOM • U.S. INVENTORY'}
           </span>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-3 font-['Cabinet_Grotesk']">
-            Outboards for{' '}
+            {shopData.title || 'Outboards for'}{' '}
             <span className="text-[#0099FF] bg-gradient-to-r from-[#0099FF] to-[#38BDF8] bg-clip-text text-transparent">
-              every mission.
+              {shopData.titleHighlight || 'every mission.'}
             </span>
           </h1>
 
           <p className="text-sm sm:text-base text-slate-300 font-normal leading-relaxed max-w-2xl">
-            Browse our extensive certified outboard inventory with upfront USD ($) pricing, genuine manufacturer warranties, and insured nationwide freight.
+            {shopData.subtitle ||
+              'Browse our extensive certified outboard inventory with upfront USD ($) pricing, genuine manufacturer warranties, and insured nationwide freight.'}
           </p>
         </div>
 

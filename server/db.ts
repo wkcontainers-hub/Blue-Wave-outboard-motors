@@ -855,4 +855,59 @@ export function initDatabase() {
       new Date().toISOString()
     );
   }
+
+  const existingShop = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('shop');
+  if (!existingShop) {
+    const defaultShop = {
+      badge: 'BLUEWAVE OUTBOARD SHOWROOM • U.S. INVENTORY',
+      title: 'Outboards for',
+      titleHighlight: 'every mission.',
+      subtitle: 'Browse our extensive certified outboard inventory with upfront USD ($) pricing, genuine manufacturer warranties, and insured nationwide freight.',
+      bannerImage: '/images/mercury_offshore_motor_1791036614640.jpg',
+      noticeTitle: 'Nationwide Marine Freight',
+      noticeText: 'All crated motors ship fully insured via specialized freight carriers with hydraulic liftgate delivery directly to your marina, residence, or commercial dock.',
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'shop',
+      JSON.stringify(defaultShop),
+      new Date().toISOString()
+    );
+  }
+
+  const existingContact = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('contact');
+  if (!existingContact) {
+    const defaultContact = {
+      badge: 'CONTACT US',
+      title: "Let's get you",
+      titleHighlight: 'on the water.',
+      subtitle: "Tell us what you're looking for and we'll help you start the conversation.",
+      bannerImage: '/images/parts_propellers_rigging_1791036562604.jpg',
+      deskHeading: 'DIRECT DEALERSHIP DESK',
+      deskDescription: 'Connect directly with BlueWave sales and certified rigging specialists for immediate pricing, trade-ins, and transport schedules.',
+      responseTimeText: 'Average response time during dealership business hours is under 15 minutes.',
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'contact',
+      JSON.stringify(defaultContact),
+      new Date().toISOString()
+    );
+  }
+
+  const existingOrder = db.prepare('SELECT page_id FROM page_content WHERE page_id = ?').get('order');
+  if (!existingOrder) {
+    const defaultOrder = {
+      badge: 'DIRECT OUTBOARD INVENTORY & CUSTOM ORDER',
+      title: 'Request a',
+      titleHighlight: 'Custom Quote.',
+      subtitle: 'Looking for a specific horsepower, shaft length, or rigging configuration? Submit your requirements below and our dealership will confirm availability, crating fees, and estimated transit times within 2 to 4 business hours.',
+      bannerImage: '/images/yamaha_v6_offshore_1791559510414.jpg',
+      helpTitle: 'Need immediate assistance?',
+      helpText: 'Call or message our dealership desk directly for real-time inventory verification and expedited quotes.',
+    };
+    db.prepare('INSERT INTO page_content (page_id, data_json, updated_at) VALUES (?, ?, ?)').run(
+      'order',
+      JSON.stringify(defaultOrder),
+      new Date().toISOString()
+    );
+  }
 }

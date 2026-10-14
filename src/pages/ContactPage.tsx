@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle2, MessageSquare, AlertCircle, PhoneCall, ExternalLink } from 'lucide-react';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
-import { useStore } from '../context/StoreContext.tsx';
+import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
 
 export const ContactPage: React.FC = () => {
-  const { businessInfo } = useStore();
+  const { businessInfo, pagesContent } = useStore();
+  const contactData = pagesContent?.contact || DEFAULT_PAGE_CONTENT.contact;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -68,20 +69,21 @@ export const ContactPage: React.FC = () => {
         <div className="max-w-3xl mb-12 md:mb-16">
           {/* Top label */}
           <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#0088FF] mb-3 block font-['Cabinet_Grotesk']">
-            CONTACT US
+            {contactData.badge || 'CONTACT US'}
           </span>
 
           {/* Large heading */}
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-4 font-['Cabinet_Grotesk']">
-            Let's get you{' '}
+            {contactData.title || "Let's get you"}{' '}
             <span className="text-[#0099FF] bg-gradient-to-r from-[#0099FF] to-[#38BDF8] bg-clip-text text-transparent">
-              on the water.
+              {contactData.titleHighlight || 'on the water.'}
             </span>
           </h1>
 
           {/* Supporting text */}
           <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed">
-            Tell us what you're looking for and we'll help you start the conversation.
+            {contactData.subtitle ||
+              "Tell us what you're looking for and we'll help you start the conversation."}
           </p>
         </div>
 
@@ -93,13 +95,14 @@ export const ContactPage: React.FC = () => {
             <div className="bg-[#0B1826] rounded-2xl p-7 border border-white/[0.08] shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-extrabold uppercase tracking-widest text-[#0088FF] font-['Cabinet_Grotesk']">
-                  DIRECT DEALERSHIP DESK
+                  {contactData.deskHeading || 'DIRECT DEALERSHIP DESK'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">Verified Dealer</span>
               </div>
 
               <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                Connect directly with {businessInfo.businessName} sales and certified rigging specialists for immediate pricing, trade-ins, and transport schedules.
+                {contactData.deskDescription ||
+                  `Connect directly with ${businessInfo.businessName} sales and certified rigging specialists for immediate pricing, trade-ins, and transport schedules.`}
               </p>
 
               <div className="space-y-4">

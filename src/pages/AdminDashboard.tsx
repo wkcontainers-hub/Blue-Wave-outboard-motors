@@ -39,7 +39,7 @@ import {
   Check,
   FileText,
 } from 'lucide-react';
-import { useStore } from '../context/StoreContext.tsx';
+import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
 import { PageId } from '../components/Header.tsx';
 import { OutboardMotorListing, OutboardBrand, MotorCondition, ShaftLength, AdminStats } from '../types/inventory.ts';
 import { getSafeImageUrl, handleImageError } from '../utils/imageUrl.ts';
@@ -155,11 +155,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
   const [bizForm, setBizForm] = useState<any>({ ...businessInfo });
   const [bizSaved, setBizSaved] = useState(false);
 
-  // Edit Pages State
-  const [selectedPageToEdit, setSelectedPageToEdit] = useState<'home' | 'about' | 'services'>('home');
+  // Edit Pages State (All 6 Pages: Home, About Us, Services, Shop Now, Contact Us, Order)
+  const [selectedPageToEdit, setSelectedPageToEdit] = useState<
+    'home' | 'about' | 'services' | 'shop' | 'contact' | 'order'
+  >('home');
   const [homeForm, setHomeForm] = useState<any>(pagesContent.home);
   const [aboutForm, setAboutForm] = useState<any>(pagesContent.about);
   const [servicesForm, setServicesForm] = useState<any>(pagesContent.services);
+  const [shopForm, setShopForm] = useState<any>(pagesContent.shop || DEFAULT_PAGE_CONTENT.shop);
+  const [contactForm, setContactForm] = useState<any>(pagesContent.contact || DEFAULT_PAGE_CONTENT.contact);
+  const [orderForm, setOrderForm] = useState<any>(pagesContent.order || DEFAULT_PAGE_CONTENT.order);
   const [isSavingPage, setIsSavingPage] = useState(false);
   const [pageSaveSuccess, setPageSaveSuccess] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -168,6 +173,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     if (pagesContent.home) setHomeForm(pagesContent.home);
     if (pagesContent.about) setAboutForm(pagesContent.about);
     if (pagesContent.services) setServicesForm(pagesContent.services);
+    if (pagesContent.shop) setShopForm(pagesContent.shop);
+    if (pagesContent.contact) setContactForm(pagesContent.contact);
+    if (pagesContent.order) setOrderForm(pagesContent.order);
   }, [pagesContent]);
 
   const uploadPageImage = async (file: File): Promise<string | null> => {
@@ -201,12 +209,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
     let contentToSave;
     if (selectedPageToEdit === 'home') contentToSave = homeForm;
     else if (selectedPageToEdit === 'about') contentToSave = aboutForm;
-    else contentToSave = servicesForm;
+    else if (selectedPageToEdit === 'services') contentToSave = servicesForm;
+    else if (selectedPageToEdit === 'shop') contentToSave = shopForm;
+    else if (selectedPageToEdit === 'contact') contentToSave = contactForm;
+    else contentToSave = orderForm;
 
     const res = await updatePageContent(selectedPageToEdit, contentToSave);
     setIsSavingPage(false);
     if (res.success) {
-      setPageSaveSuccess(`✓ Successfully published! The ${selectedPageToEdit.toUpperCase()} page is now live and persistent in the database.`);
+      setPageSaveSuccess(
+        `✓ Successfully published! The ${selectedPageToEdit.toUpperCase()} page is now live and persistent in the database.`
+      );
       setTimeout(() => setPageSaveSuccess(null), 5000);
     } else {
       alert(`Error saving page: ${res.error || 'Unknown error'}`);
@@ -1739,19 +1752,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
               </div>
             )}
 
-            {/* Page Sub-Tabs (Home, About Us, Services) */}
-            <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+            {/* Page Sub-Tabs (All 6 Pages: Home, About Us, Services, Shop Now, Contact Us, Order) */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
               {[
-                { id: 'home', label: 'Home Page' },
-                { id: 'about', label: 'About Us Page' },
-                { id: 'services', label: 'Services Page' },
+                { id: 'home', label: '1. HOME' },
+                { id: 'about', label: '2. ABOUT US' },
+                { id: 'services', label: '3. SERVICES' },
+                { id: 'shop', label: '4. SHOP NOW' },
+                { id: 'contact', label: '5. CONTACT US' },
+                { id: 'order', label: '6. ORDER' },
               ].map((p) => (
                 <button
                   key={p.id}
                   onClick={() => setSelectedPageToEdit(p.id as any)}
-                  className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-4 sm:px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                     selectedPageToEdit === p.id
-                      ? 'bg-[#0088FF] text-white shadow-md shadow-[#0088FF]/20'
+                      ? 'bg-[#0088FF] text-white shadow-lg shadow-[#0088FF]/30 ring-1 ring-white/20'
                       : 'bg-[#0B1826] text-slate-400 hover:text-white border border-white/5 hover:border-white/15'
                   }`}
                 >
@@ -1854,22 +1870,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                           placeholder="Image URL or local asset path..."
                           className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
                         />
-                        <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload Replacement Hero Photo</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const url = await uploadPageImage(file);
-                                if (url) setHomeForm({ ...homeForm, heroImage: url });
-                              }
-                            }}
-                          />
-                        </label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload / Replace Photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url) setHomeForm({ ...homeForm, heroImage: url });
+                                }
+                              }}
+                            />
+                          </label>
+                          {homeForm.heroImage && (
+                            <button
+                              type="button"
+                              onClick={() => setHomeForm({ ...homeForm, heroImage: '' })}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Photo</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2194,22 +2222,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                           placeholder="Image URL or local path..."
                           className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
                         />
-                        <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload Replacement Photograph</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const url = await uploadPageImage(file);
-                                if (url) setAboutForm({ ...aboutForm, image: url });
-                              }
-                            }}
-                          />
-                        </label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload / Replace Photograph</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url) setAboutForm({ ...aboutForm, image: url });
+                                }
+                              }}
+                            />
+                          </label>
+                          {aboutForm.image && (
+                            <button
+                              type="button"
+                              onClick={() => setAboutForm({ ...aboutForm, image: '' })}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Photograph</span>
+                            </button>
+                          )}
+                        </div>
 
                         {/* Overlay Badge texts */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-white/5">
@@ -2440,6 +2480,432 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* 4. SHOP NOW PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'shop' && shopForm && (
+              <div className="space-y-6">
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Shop Now Showroom Header &amp; Headings
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Top Badge Text</label>
+                      <input
+                        type="text"
+                        value={shopForm.badge || ''}
+                        onChange={(e) => setShopForm({ ...shopForm, badge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={shopForm.title || ''}
+                        onChange={(e) => setShopForm({ ...shopForm, title: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight (Gradient Blue)</label>
+                    <input
+                      type="text"
+                      value={shopForm.titleHighlight || ''}
+                      onChange={(e) => setShopForm({ ...shopForm, titleHighlight: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Paragraph Description / Writing</label>
+                    <textarea
+                      rows={3}
+                      value={shopForm.subtitle || ''}
+                      onChange={(e) => setShopForm({ ...shopForm, subtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+
+                  {/* Banner / Showroom Photography */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Showroom Header / Banner Photograph</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="relative w-48 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                        {shopForm.bannerImage ? (
+                          <img
+                            src={getSafeImageUrl(shopForm.bannerImage, '/images/mercury_offshore_motor_1791036614640.jpg')}
+                            alt="Shop banner"
+                            className="w-full h-full object-cover"
+                            onError={(e) => handleImageError(e, '/images/mercury_offshore_motor_1791036614640.jpg')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                            No photograph
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full space-y-2">
+                        <input
+                          type="text"
+                          value={shopForm.bannerImage || ''}
+                          onChange={(e) => setShopForm({ ...shopForm, bannerImage: e.target.value })}
+                          placeholder="Image URL or local asset path..."
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload / Replace Photograph</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url) setShopForm({ ...shopForm, bannerImage: url });
+                                }
+                              }}
+                            />
+                          </label>
+                          {shopForm.bannerImage && (
+                            <button
+                              type="button"
+                              onClick={() => setShopForm({ ...shopForm, bannerImage: '' })}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Photograph</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Freight & Logistics Callout */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Nationwide Freight &amp; Delivery Banner
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Notice Heading</label>
+                      <input
+                        type="text"
+                        value={shopForm.noticeTitle || ''}
+                        onChange={(e) => setShopForm({ ...shopForm, noticeTitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Notice Text / Details</label>
+                      <textarea
+                        rows={2}
+                        value={shopForm.noticeText || ''}
+                        onChange={(e) => setShopForm({ ...shopForm, noticeText: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* 5. CONTACT US PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'contact' && contactForm && (
+              <div className="space-y-6">
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Contact Us Main Header &amp; Writings
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Top Badge Text</label>
+                      <input
+                        type="text"
+                        value={contactForm.badge || ''}
+                        onChange={(e) => setContactForm({ ...contactForm, badge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={contactForm.title || ''}
+                        onChange={(e) => setContactForm({ ...contactForm, title: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight (Gradient Blue)</label>
+                    <input
+                      type="text"
+                      value={contactForm.titleHighlight || ''}
+                      onChange={(e) => setContactForm({ ...contactForm, titleHighlight: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Paragraph Description / Writing</label>
+                    <textarea
+                      rows={3}
+                      value={contactForm.subtitle || ''}
+                      onChange={(e) => setContactForm({ ...contactForm, subtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+
+                  {/* Contact Page Image */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Relevant Section Photograph</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="relative w-48 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                        {contactForm.bannerImage ? (
+                          <img
+                            src={getSafeImageUrl(contactForm.bannerImage, '/images/parts_propellers_rigging_1791036562604.jpg')}
+                            alt="Contact banner"
+                            className="w-full h-full object-cover"
+                            onError={(e) => handleImageError(e, '/images/parts_propellers_rigging_1791036562604.jpg')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                            No photograph
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full space-y-2">
+                        <input
+                          type="text"
+                          value={contactForm.bannerImage || ''}
+                          onChange={(e) => setContactForm({ ...contactForm, bannerImage: e.target.value })}
+                          placeholder="Image URL or local asset path..."
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload / Replace Photograph</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url) setContactForm({ ...contactForm, bannerImage: url });
+                                }
+                              }}
+                            />
+                          </label>
+                          {contactForm.bannerImage && (
+                            <button
+                              type="button"
+                              onClick={() => setContactForm({ ...contactForm, bannerImage: '' })}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Photograph</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Dealership Desk Section */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Dealership Desk Box Content
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Desk Section Heading</label>
+                      <input
+                        type="text"
+                        value={contactForm.deskHeading || ''}
+                        onChange={(e) => setContactForm({ ...contactForm, deskHeading: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Response Time Note</label>
+                      <input
+                        type="text"
+                        value={contactForm.responseTimeText || ''}
+                        onChange={(e) => setContactForm({ ...contactForm, responseTimeText: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Desk Description Paragraph</label>
+                    <textarea
+                      rows={2}
+                      value={contactForm.deskDescription || ''}
+                      onChange={(e) => setContactForm({ ...contactForm, deskDescription: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---------------------------------------------------- */}
+            {/* 6. ORDER PAGE EDIT FORM */}
+            {/* ---------------------------------------------------- */}
+            {selectedPageToEdit === 'order' && orderForm && (
+              <div className="space-y-6">
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-5">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Order / Custom Request Page Headings &amp; Writings
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Top Badge Text</label>
+                      <input
+                        type="text"
+                        value={orderForm.badge || ''}
+                        onChange={(e) => setOrderForm({ ...orderForm, badge: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Prefix</label>
+                      <input
+                        type="text"
+                        value={orderForm.title || ''}
+                        onChange={(e) => setOrderForm({ ...orderForm, title: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Headline Highlight (Gradient Blue)</label>
+                    <input
+                      type="text"
+                      value={orderForm.titleHighlight || ''}
+                      onChange={(e) => setOrderForm({ ...orderForm, titleHighlight: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-bold text-[#0099FF]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Paragraph Description / Instructions</label>
+                    <textarea
+                      rows={3}
+                      value={orderForm.subtitle || ''}
+                      onChange={(e) => setOrderForm({ ...orderForm, subtitle: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                    />
+                  </div>
+
+                  {/* Order Page Relevant Photo */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Relevant Header / Banner Photograph</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div className="relative w-48 h-28 rounded-lg overflow-hidden border border-white/20 bg-black shrink-0">
+                        {orderForm.bannerImage ? (
+                          <img
+                            src={getSafeImageUrl(orderForm.bannerImage, '/images/yamaha_v6_offshore_1791559510414.jpg')}
+                            alt="Order banner"
+                            className="w-full h-full object-cover"
+                            onError={(e) => handleImageError(e, '/images/yamaha_v6_offshore_1791559510414.jpg')}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                            No photograph
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full space-y-2">
+                        <input
+                          type="text"
+                          value={orderForm.bannerImage || ''}
+                          onChange={(e) => setOrderForm({ ...orderForm, bannerImage: e.target.value })}
+                          placeholder="Image URL or local asset path..."
+                          className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs font-mono"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E2034] hover:bg-[#0088FF] text-white text-xs font-semibold cursor-pointer transition-colors">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload / Replace Photograph</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const url = await uploadPageImage(file);
+                                  if (url) setOrderForm({ ...orderForm, bannerImage: url });
+                                }
+                              }}
+                            />
+                          </label>
+                          {orderForm.bannerImage && (
+                            <button
+                              type="button"
+                              onClick={() => setOrderForm({ ...orderForm, bannerImage: '' })}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-500/30 text-red-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Photograph</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Help Banner Section */}
+                <div className="bg-[#0B1826] rounded-2xl p-6 border border-white/10 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-['Cabinet_Grotesk'] text-[#0088FF]">
+                    Order Assistance Notice Box
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Notice Heading</label>
+                      <input
+                        type="text"
+                        value={orderForm.helpTitle || ''}
+                        onChange={(e) => setOrderForm({ ...orderForm, helpTitle: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Notice Paragraph</label>
+                      <textarea
+                        rows={2}
+                        value={orderForm.helpText || ''}
+                        onChange={(e) => setOrderForm({ ...orderForm, helpText: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#060D17] border border-white/10 text-white text-xs resize-y"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2818,12 +3284,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex bg-[#060D17] rounded-lg p-0.5 border border-white/10">
-                  {(['home', 'about', 'services'] as const).map((p) => (
+                <div className="flex flex-wrap bg-[#060D17] rounded-lg p-0.5 border border-white/10">
+                  {(['home', 'about', 'services', 'shop', 'contact', 'order'] as const).map((p) => (
                     <button
                       key={p}
                       onClick={() => setSelectedPageToEdit(p)}
-                      className={`px-3 py-1 rounded text-xs font-bold capitalize transition-colors ${
+                      className={`px-3 py-1 rounded text-xs font-bold uppercase transition-colors cursor-pointer ${
                         selectedPageToEdit === p
                           ? 'bg-[#0088FF] text-white'
                           : 'text-slate-400 hover:text-white'
@@ -3021,6 +3487,104 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) =>
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedPageToEdit === 'shop' && shopForm && (
+                <div className="space-y-6">
+                  <div className="p-6 rounded-2xl bg-[#0B1826] border border-white/10">
+                    <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                      {shopForm.badge}
+                    </span>
+                    <h2 className="text-3xl font-black text-white mb-2 font-['Cabinet_Grotesk']">
+                      {shopForm.title} <span className="text-[#0099FF]">{shopForm.titleHighlight}</span>
+                    </h2>
+                    <p className="text-xs text-slate-300 max-w-2xl mb-4 leading-relaxed">{shopForm.subtitle}</p>
+
+                    {shopForm.bannerImage && (
+                      <div className="rounded-xl overflow-hidden aspect-[21/9] max-h-60 border border-white/10 mb-4">
+                        <img
+                          src={getSafeImageUrl(shopForm.bannerImage, '/images/mercury_offshore_motor_1791036614640.jpg')}
+                          alt="Shop preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => handleImageError(e, '/images/mercury_offshore_motor_1791036614640.jpg')}
+                        />
+                      </div>
+                    )}
+
+                    <div className="p-4 rounded-xl bg-[#060D17] border border-white/10 flex items-start gap-3">
+                      <Truck className="w-5 h-5 text-[#0088FF] shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-xs text-white block">{shopForm.noticeTitle}</strong>
+                        <p className="text-[11px] text-slate-300">{shopForm.noticeText}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedPageToEdit === 'contact' && contactForm && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 rounded-2xl bg-[#0B1826] border border-white/10">
+                    <div>
+                      <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                        {contactForm.badge}
+                      </span>
+                      <h2 className="text-3xl font-black text-white mb-2 font-['Cabinet_Grotesk']">
+                        {contactForm.title} <span className="text-[#0099FF]">{contactForm.titleHighlight}</span>
+                      </h2>
+                      <p className="text-xs text-slate-300 mb-6 leading-relaxed">{contactForm.subtitle}</p>
+
+                      <div className="p-4 rounded-xl bg-[#060D17] border border-white/10 space-y-2">
+                        <span className="text-xs font-bold text-[#0088FF] uppercase block">{contactForm.deskHeading}</span>
+                        <p className="text-xs text-slate-300">{contactForm.deskDescription}</p>
+                        <span className="text-[10px] text-emerald-400 block font-mono">{contactForm.responseTimeText}</span>
+                      </div>
+                    </div>
+
+                    {contactForm.bannerImage && (
+                      <div className="relative rounded-xl overflow-hidden aspect-[4/3] border border-white/10">
+                        <img
+                          src={getSafeImageUrl(contactForm.bannerImage, '/images/parts_propellers_rigging_1791036562604.jpg')}
+                          alt="Contact preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => handleImageError(e, '/images/parts_propellers_rigging_1791036562604.jpg')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedPageToEdit === 'order' && orderForm && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 rounded-2xl bg-[#0B1826] border border-white/10">
+                    <div>
+                      <span className="text-xs text-[#0088FF] font-bold uppercase tracking-wider block mb-1">
+                        {orderForm.badge}
+                      </span>
+                      <h2 className="text-3xl font-black text-white mb-2 font-['Cabinet_Grotesk']">
+                        {orderForm.title} <span className="text-[#0099FF]">{orderForm.titleHighlight}</span>
+                      </h2>
+                      <p className="text-xs text-slate-300 mb-6 leading-relaxed">{orderForm.subtitle}</p>
+
+                      <div className="p-4 rounded-xl bg-[#060D17] border border-white/10">
+                        <strong className="text-xs text-white block mb-1">{orderForm.helpTitle}</strong>
+                        <p className="text-xs text-slate-300">{orderForm.helpText}</p>
+                      </div>
+                    </div>
+
+                    {orderForm.bannerImage && (
+                      <div className="relative rounded-xl overflow-hidden aspect-[4/3] border border-white/10">
+                        <img
+                          src={getSafeImageUrl(orderForm.bannerImage, '/images/yamaha_v6_offshore_1791559510414.jpg')}
+                          alt="Order preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => handleImageError(e, '/images/yamaha_v6_offshore_1791559510414.jpg')}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

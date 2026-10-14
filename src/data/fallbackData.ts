@@ -41,15 +41,14 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4-Stroke EFI',
-    price: 24850.00,
+    price: 24850,
     isCallForPrice: false,
     location: 'Miami Dealership Yard',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 2,
     productPhotos: [
-      '/images/about_outboard_motor_1791036540139.jpg',
-      '/images/hero_outboard_boat_1791036528701.jpg',
+      '/images/yamaha_v6_offshore_1791559510414.jpg'
     ],
     description: 'Brand new Yamaha 250 HP Offshore V6 with digital electric steering integration, high-output alternator, and factory 5-year marine warranty. Ideal for center consoles and bay boats.',
     specs: {
@@ -57,10 +56,10 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
       'Starting': 'Electric Start w/ PTT',
       'Weight': '551 lbs (250 kg)',
       'Full Throttle RPM': '5,000 - 6,000 RPM',
-      'Gear Ratio': '1.75:1',
+      'Gear Ratio': '1.75:1'
     },
     featured: true,
-    createdAt: '2025-01-01T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.338Z'
   },
   {
     id: 'bw-mot-002',
@@ -72,24 +71,24 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4-Stroke DOHC',
-    price: 13400.00,
+    price: 13400,
     isCallForPrice: false,
     location: 'Miami Dealership Yard',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 3,
     productPhotos: [
-      '/images/about_outboard_motor_1791036540139.jpg',
+      '/images/suzuki_df140_motor_1791559527791.jpg'
     ],
     description: 'Renowned for exceptional power-to-weight ratio, Suzuki lean burn control system, and offset driveshaft for superior balance. Perfect repower candidate for pontoons and flats skiffs.',
     specs: {
       'Displacement': '2,045 cc',
       'Starting': 'Electric Start',
       'Weight': '410 lbs',
-      'Gear Ratio': '2.59:1',
+      'Gear Ratio': '2.59:1'
     },
     featured: true,
-    createdAt: '2025-01-02T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.338Z'
   },
   {
     id: 'bw-mot-003',
@@ -101,24 +100,24 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 128,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4.6L V8',
-    price: 22900.00,
+    price: 22900,
     isCallForPrice: false,
     location: 'Miami Dealership Yard',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 1,
     productPhotos: [
-      '/images/mercury_offshore_motor_1791036614640.jpg',
+      '/images/mercury_offshore_motor_1791036614640.jpg'
     ],
     description: 'Flawless condition 4.6-liter naturally aspirated V8 Verado. Factory fresh compression test on all 8 cylinders, Advanced MidSection (AMS) vibration isolation, and SmartCraft digital gauge compatibility.',
     specs: {
       'Displacement': '4.6L V8',
       'Cylinder Compression': '180 PSI Across All 8',
       'Warranty': '1-Year Certified Dealer Protection',
-      'Steering': 'Integrated Electro-Hydraulic',
+      'Steering': 'Integrated Electro-Hydraulic'
     },
     featured: true,
-    createdAt: '2025-01-03T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.338Z'
   },
   {
     id: 'bw-mot-004',
@@ -130,24 +129,24 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '15" (Short)',
     fuelType: 'Gasoline 4-Stroke Battery-less EFI',
-    price: 2850.00,
+    price: 2850,
     isCallForPrice: false,
     location: 'In Stock - Ready to Ship',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 5,
     productPhotos: [
-      '/images/portable_outboard_motor_1791036573522.jpg',
+      '/images/portable_outboard_motor_1791036573522.jpg'
     ],
     description: 'Industry-first battery-less electronic fuel injection in a lightweight 9.9 HP chassis. Crisp throttle response, easy pull starting, built-in carry handle, and superior fuel economy for tenders.',
     specs: {
       'Weight': '95 lbs',
       'Fuel Tank': '3.1 Gal Separate Tank Included',
       'Starting': 'Manual Recoil / Primerless',
-      'Trim': 'Manual 6-Position Tilt',
+      'Trim': 'Manual 6-Position Tilt'
     },
     featured: false,
-    createdAt: '2025-01-04T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.339Z'
   },
   {
     id: 'bw-mot-005',
@@ -159,23 +158,23 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 310,
     shaftLength: '30" (Ultra Long)',
     fuelType: 'Gasoline 4-Stroke VTEC',
-    price: 17500.00,
+    price: 17500,
     isCallForPrice: false,
     location: 'Warehouse Bay 3',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 1,
     productPhotos: [
-      '/images/used_outboard_inspection_1791036626286.jpg',
+      '/images/honda_bf250_motor_1791559549672.jpg'
     ],
     description: 'Equipped with Honda Intelligent Shift and Throttle (iST) and variable valve timing. Fully dealer-serviced at 100hr and 300hr milestones with fresh impeller and lower unit gear oil.',
     specs: {
       'Displacement': '3,583 cc',
       'Alternator': '90 Amp High Output',
-      'Shaft': '30" Ultra Long (Offshore Transom)',
+      'Shaft': '30" Ultra Long (Offshore Transom)'
     },
     featured: false,
-    createdAt: '2025-01-05T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.339Z'
   },
   {
     id: 'bw-mot-006',
@@ -187,22 +186,22 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 185,
     shaftLength: '20" (Long)',
     fuelType: 'Gasoline 4-Stroke',
-    price: 7900.00,
+    price: 7900,
     isCallForPrice: false,
     location: 'Delivered to Customer',
     deliveryAvailable: true,
     availability: 'Sold',
     stockCount: 0,
     productPhotos: [
-      '/images/service_outboard_engine_1791036551185.jpg',
+      '/images/service_outboard_engine_1791036551185.jpg'
     ],
     description: 'Recently sold unit. Compact 16-valve SOHC design. Outstanding shallow water performance with low engine hours and full diagnostic inspection printout.',
     specs: {
       'Hours': '185 Verified',
-      'Status': 'Purchased & Delivered in Florida',
+      'Status': 'Purchased & Delivered in Florida'
     },
     featured: false,
-    createdAt: '2025-01-06T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.339Z'
   },
   {
     id: 'bw-mot-007',
@@ -214,23 +213,23 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4-Stroke 3.0L',
-    price: 14200.00,
+    price: 14200,
     isCallForPrice: false,
     location: 'Miami Showroom Display',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 2,
     productPhotos: [
-      '/images/mercury_offshore_motor_1791036614640.jpg',
+      '/images/mercury_150_fourstroke_1791559568340.jpg'
     ],
     description: 'Class-leading 3.0L displacement producing unmatched low-end torque for quick planing and exceptional durability. Maintenance-free valve train for life.',
     specs: {
       'Displacement': '3.0 L (183 cid)',
       'Alternator': '60 Amp / 756 Watt',
-      'Weight': '455 lbs',
+      'Weight': '455 lbs'
     },
     featured: true,
-    createdAt: '2025-01-07T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.339Z'
   },
   {
     id: 'bw-mot-008',
@@ -242,23 +241,23 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4.0L V6 24-Valve',
-    price: 21500.00,
+    price: 21500,
     isCallForPrice: false,
     location: 'Miami Showroom Display',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 1,
     productPhotos: [
-      '/images/about_outboard_motor_1791036540139.jpg',
+      '/images/suzuki_df140_motor_1791559527791.jpg'
     ],
     description: 'Suzuki drive-by-wire electronic throttle and shift controls with selectable counter-rotation capability for multi-engine center consoles.',
     specs: {
       'Displacement': '4,028 cc (245.6 ci)',
       'Steering': 'Drive-by-Wire Binnacle Ready',
-      'Alternator': '54 Amp',
+      'Alternator': '54 Amp'
     },
     featured: true,
-    createdAt: '2025-01-08T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.339Z'
   },
   {
     id: 'bw-mot-009',
@@ -270,23 +269,23 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 0,
     shaftLength: '25" (Extra Long)',
     fuelType: 'Gasoline 4-Stroke DOHC 16-Valve',
-    price: 11950.00,
+    price: 11950,
     isCallForPrice: false,
     location: 'Miami Warehouse',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 3,
     productPhotos: [
-      '/images/about_outboard_motor_1791036540139.jpg',
+      '/images/yamaha_v6_offshore_1791559510414.jpg'
     ],
     description: 'Versatile, lightweight power for bay boats, skiffs, runabouts, and inflatables. Excellent fuel economy with Yamaha Command Link digital gauge compatibility.',
     specs: {
       'Displacement': '1.8 Liter',
       'Weight': '377 lbs',
-      'RPM Range': '5,300 - 6,300',
+      'RPM Range': '5,300 - 6,300'
     },
     featured: false,
-    createdAt: '2025-01-09T00:00:00Z',
+    createdAt: '2026-10-14T11:24:08.340Z'
   },
   {
     id: 'bw-mot-010',
@@ -298,22 +297,23 @@ export const FALLBACK_MOTORS: OutboardMotorListing[] = [
     engineHours: 84,
     shaftLength: '20" (Long)',
     fuelType: 'Gasoline 2.4L DOHC VTEC',
-    price: 13800.00,
+    price: 13800,
     isCallForPrice: false,
     location: 'Warehouse Bay 2',
     deliveryAvailable: true,
     availability: 'Available',
     stockCount: 1,
     productPhotos: [
-      '/images/used_outboard_inspection_1791036626286.jpg',
+      '/images/honda_bf250_motor_1791559549672.jpg',
+      '/images/used_outboard_inspection_1791036626286.jpg'
     ],
     description: 'Automotive-derived 2.4L powerplant with variable valve timing and lift. Only 84 gentle freshwater hours with complete dealer logbook inspection.',
     specs: {
       'Displacement': '2,354 cc',
       'Hours': '84 Verified Freshwater',
-      'Warranty': 'Remaining Factory Transferable',
+      'Warranty': 'Remaining Factory Transferable'
     },
     featured: false,
-    createdAt: '2025-01-10T00:00:00Z',
-  },
+    createdAt: '2026-10-14T11:24:08.340Z'
+  }
 ];

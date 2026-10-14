@@ -1,2 +1,4 @@
 # Cloudflare Pages SPA Routing
-/*    /index.html   200
+# Static assets and SPA routes fallback to index.html; /api/* passes to Cloudflare Pages Functions
+/api/*  /api/:splat  200
+/*      /index.html   200

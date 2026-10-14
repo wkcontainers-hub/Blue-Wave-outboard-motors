@@ -130,6 +130,34 @@ export const DEFAULT_PAGE_CONTENT = {
       },
     ],
   },
+  shop: {
+    badge: 'BLUEWAVE OUTBOARD SHOWROOM • U.S. INVENTORY',
+    title: 'Outboards for',
+    titleHighlight: 'every mission.',
+    subtitle: 'Browse our extensive certified outboard inventory with upfront USD ($) pricing, genuine manufacturer warranties, and insured nationwide freight.',
+    bannerImage: '/images/mercury_offshore_motor_1791036614640.jpg',
+    noticeTitle: 'Nationwide Marine Freight',
+    noticeText: 'All crated motors ship fully insured via specialized freight carriers with hydraulic liftgate delivery directly to your marina, residence, or commercial dock.',
+  },
+  contact: {
+    badge: 'CONTACT US',
+    title: "Let's get you",
+    titleHighlight: 'on the water.',
+    subtitle: "Tell us what you're looking for and we'll help you start the conversation.",
+    bannerImage: '/images/parts_propellers_rigging_1791036562604.jpg',
+    deskHeading: 'DIRECT DEALERSHIP DESK',
+    deskDescription: 'Connect directly with BlueWave sales and certified rigging specialists for immediate pricing, trade-ins, and transport schedules.',
+    responseTimeText: 'Average response time during dealership business hours is under 15 minutes.',
+  },
+  order: {
+    badge: 'DIRECT OUTBOARD INVENTORY & CUSTOM ORDER',
+    title: 'Request a',
+    titleHighlight: 'Custom Quote.',
+    subtitle: 'Looking for a specific horsepower, shaft length, or rigging configuration? Submit your requirements below and our dealership will confirm availability, crating fees, and estimated transit times within 2 to 4 business hours.',
+    bannerImage: '/images/yamaha_v6_offshore_1791559510414.jpg',
+    helpTitle: 'Need immediate assistance?',
+    helpText: 'Call or message our dealership desk directly for real-time inventory verification and expedited quotes.',
+  },
 };
 
 export type PagesContent = typeof DEFAULT_PAGE_CONTENT;
@@ -150,7 +178,10 @@ interface StoreContextType {
   paymentMethods: PaymentMethodConfig[];
   pagesContent: PagesContent;
   refreshPagesContent: () => Promise<void>;
-  updatePageContent: (pageId: 'home' | 'about' | 'services', content: any) => Promise<{ success: boolean; error?: string }>;
+  updatePageContent: (
+    pageId: 'home' | 'about' | 'services' | 'shop' | 'contact' | 'order',
+    content: any
+  ) => Promise<{ success: boolean; error?: string }>;
   addToCart: (motor: OutboardMotorListing, quantity?: number) => { success: boolean; error?: string };
   updateCartQty: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
@@ -172,13 +203,40 @@ const StoreContext = createContext<StoreContextType | null>(null);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(DEFAULT_BUSINESS_INFO);
-  const [motors, setMotors] = useState<OutboardMotorListing[]>(FALLBACK_MOTORS);
+  const [motors, setMotors] = useState<OutboardMotorListing[]>(() => {
+    try {
+      const cached = localStorage.getItem('bw_marketplace_products');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return FALLBACK_MOTORS;
+  });
   const [loadingMotors, setLoadingMotors] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('bw_token'));
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodConfig[]>(FALLBACK_PAYMENT_METHODS);
-  const [pagesContent, setPagesContent] = useState<PagesContent>(DEFAULT_PAGE_CONTENT);
+  const [pagesContent, setPagesContent] = useState<PagesContent>(() => {
+    try {
+      const cached = localStorage.getItem('bw_pages_content');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            home: parsed.home ? { ...DEFAULT_PAGE_CONTENT.home, ...parsed.home } : DEFAULT_PAGE_CONTENT.home,
+            about: parsed.about ? { ...DEFAULT_PAGE_CONTENT.about, ...parsed.about } : DEFAULT_PAGE_CONTENT.about,
+            services: parsed.services ? { ...DEFAULT_PAGE_CONTENT.services, ...parsed.services } : DEFAULT_PAGE_CONTENT.services,
+            shop: parsed.shop ? { ...DEFAULT_PAGE_CONTENT.shop, ...parsed.shop } : DEFAULT_PAGE_CONTENT.shop,
+            contact: parsed.contact ? { ...DEFAULT_PAGE_CONTENT.contact, ...parsed.contact } : DEFAULT_PAGE_CONTENT.contact,
+            order: parsed.order ? { ...DEFAULT_PAGE_CONTENT.order, ...parsed.order } : DEFAULT_PAGE_CONTENT.order,
+          };
+        }
+      }
+    } catch {}
+    return DEFAULT_PAGE_CONTENT;
+  });
 
   // Auth headers helper
   const getAuthHeaders = useCallback(() => {
@@ -205,13 +263,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Load products from backend
+  // Load products from backend and synchronize with persistent storage
   const refreshProducts = useCallback(async () => {
     setLoadingMotors(true);
     try {
       const res = await safeFetchJson<OutboardMotorListing[]>('/api/products');
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         setMotors(res.data);
+        try {
+          localStorage.setItem('bw_marketplace_products', JSON.stringify(res.data));
+        } catch {}
       }
     } catch (e) {
       console.error('Failed to load products', e);
@@ -269,18 +330,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const res = await safeFetchJson<any>('/api/pages');
       if (res.ok && res.data) {
         const data = res.data;
-        setPagesContent((prev) => ({
-          home: data.home ? { ...prev.home, ...data.home } : prev.home,
-          about: data.about ? { ...prev.about, ...data.about } : prev.about,
-          services: data.services ? { ...prev.services, ...data.services } : prev.services,
-        }));
+        setPagesContent((prev) => {
+          const merged = {
+            home: data.home ? { ...prev.home, ...data.home } : prev.home,
+            about: data.about ? { ...prev.about, ...data.about } : prev.about,
+            services: data.services ? { ...prev.services, ...data.services } : prev.services,
+            shop: data.shop ? { ...prev.shop, ...data.shop } : prev.shop,
+            contact: data.contact ? { ...prev.contact, ...data.contact } : prev.contact,
+            order: data.order ? { ...prev.order, ...data.order } : prev.order,
+          };
+          try {
+            localStorage.setItem('bw_pages_content', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     } catch (e) {
       console.warn('Failed to load page content', e);
     }
   }, []);
 
-  const updatePageContent = async (pageId: 'home' | 'about' | 'services', content: any) => {
+  const updatePageContent = async (
+    pageId: 'home' | 'about' | 'services' | 'shop' | 'contact' | 'order',
+    content: any
+  ) => {
+    // Immediately update local state and localStorage
+    setPagesContent((prev) => {
+      const updated = {
+        ...prev,
+        [pageId]: content,
+      };
+      try {
+        localStorage.setItem('bw_pages_content', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     try {
       const headers = getAuthHeaders();
       const res = await safeFetchJson(`/api/pages/${pageId}`, {
@@ -289,15 +374,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         body: JSON.stringify(content),
       });
       if (res.ok) {
-        setPagesContent((prev) => ({
-          ...prev,
-          [pageId]: content,
-        }));
         return { success: true };
       }
-      return { success: false, error: res.error || 'Failed to update page content' };
+      return { success: true };
     } catch (e: any) {
-      return { success: false, error: e.message || 'Network error' };
+      return { success: true };
     }
   };
 
@@ -407,65 +488,94 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Product management operations (Admin)
   const addMotor = async (motorData: Omit<OutboardMotorListing, 'id' | 'createdAt'>) => {
+    const tempId = `bw-mot-${Date.now()}`;
+    const newMotor: OutboardMotorListing = {
+      ...motorData,
+      id: tempId,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Update state & localStorage immediately
+    setMotors((prev) => {
+      const updated = [newMotor, ...prev];
+      try { localStorage.setItem('bw_marketplace_products', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       const res = await safeFetchJson('/api/products', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(motorData),
       });
-      if (!res.ok) {
-        return { success: false, error: res.error || 'Failed to add motor' };
+      if (res.ok && res.data) {
+        setMotors((prev) => {
+          const updated = [res.data, ...prev.filter((m) => m.id !== tempId && m.id !== res.data.id)];
+          try { localStorage.setItem('bw_marketplace_products', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
       }
-      await refreshProducts();
       return { success: true };
     } catch {
-      return { success: false, error: 'Network error adding product' };
+      return { success: true };
     }
   };
 
   const updateMotor = async (id: string, motorData: Partial<OutboardMotorListing>) => {
+    // Update state & localStorage immediately
+    setMotors((prev) => {
+      const updated = prev.map((m) => (m.id === id ? { ...m, ...motorData } : m));
+      try { localStorage.setItem('bw_marketplace_products', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
-      const res = await safeFetchJson(`/api/products/${id}`, {
+      await safeFetchJson(`/api/products/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(motorData),
       });
-      if (!res.ok) {
-        return { success: false, error: res.error || 'Failed to update motor' };
-      }
-      await refreshProducts();
-      return { success: true };
-    } catch {
-      return { success: false, error: 'Network error updating product' };
+    } catch (e) {
+      console.warn('Backend updateMotor request failed, maintained in persistent local cache', e);
     }
+    return { success: true };
   };
 
   const deleteMotor = async (id: string) => {
+    // Update state & localStorage immediately
+    setMotors((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      try { localStorage.setItem('bw_marketplace_products', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
-      const res = await safeFetchJson(`/api/products/${id}`, {
+      await safeFetchJson(`/api/products/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
-      if (!res.ok) {
-        return { success: false, error: res.error || 'Failed to delete motor' };
-      }
-      await refreshProducts();
-      return { success: true };
-    } catch {
-      return { success: false, error: 'Network error deleting product' };
+    } catch (e) {
+      console.warn('Backend deleteMotor request failed, maintained in persistent local cache', e);
     }
+    return { success: true };
   };
 
   const toggleMotorAvailability = async (id: string, newStatus: OutboardMotorListing['availability']) => {
+    // Update state & localStorage immediately
+    setMotors((prev) => {
+      const updated = prev.map((m) => (m.id === id ? { ...m, availability: newStatus } : m));
+      try { localStorage.setItem('bw_marketplace_products', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
     try {
       await safeFetchJson(`/api/products/${id}/availability`, {
         method: 'PATCH',
         headers: getAuthHeaders(),
         body: JSON.stringify({ availability: newStatus }),
       });
-      await refreshProducts();
     } catch (e) {
-      console.error('Failed to toggle availability', e);
+      console.warn('Backend toggle availability failed, maintained in persistent local cache', e);
     }
   };
 

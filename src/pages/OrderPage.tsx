@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Send, CheckCircle2, Shield, AlertCircle, FileText, Anchor } from 'lucide-react';
 import { DealerBrandsBar } from '../components/BlueWaveLogo.tsx';
-import { useStore } from '../context/StoreContext.tsx';
+import { useStore, DEFAULT_PAGE_CONTENT } from '../context/StoreContext.tsx';
 import { OutboardBrand, MotorCondition } from '../types/inventory.ts';
 
 interface OrderPageProps {
@@ -16,7 +16,8 @@ interface OrderPageProps {
 }
 
 export const OrderPage: React.FC<OrderPageProps> = ({ initialPrefill }) => {
-  const { businessInfo } = useStore();
+  const { businessInfo, pagesContent } = useStore();
+  const orderData = pagesContent?.order || DEFAULT_PAGE_CONTENT.order;
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -123,20 +124,21 @@ export const OrderPage: React.FC<OrderPageProps> = ({ initialPrefill }) => {
         <div className="max-w-3xl mb-12 md:mb-16">
           {/* Top label */}
           <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[#0088FF] mb-3 block font-['Cabinet_Grotesk']">
-            ORDER / REQUEST A MOTOR
+            {orderData.badge || 'DIRECT OUTBOARD INVENTORY & CUSTOM ORDER'}
           </span>
 
           {/* Large heading */}
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-4 font-['Cabinet_Grotesk']">
-            Tell us what{' '}
+            {orderData.title || 'Tell us what'}{' '}
             <span className="text-[#0099FF] bg-gradient-to-r from-[#0099FF] to-[#38BDF8] bg-clip-text text-transparent">
-              you need.
+              {orderData.titleHighlight || 'you need.'}
             </span>
           </h1>
 
           {/* Supporting text */}
           <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed">
-            Use this form for a purchase request or a quote. We can replace this with a real checkout/order system once inventory and payment details are ready.
+            {orderData.subtitle ||
+              'Looking for a specific horsepower, shaft length, or rigging configuration? Submit your requirements below and our dealership will confirm availability, crating fees, and estimated transit times within 2 to 4 business hours.'}
           </p>
         </div>
 
