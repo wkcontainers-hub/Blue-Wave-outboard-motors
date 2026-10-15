@@ -1,7 +1,7 @@
 name = 'blue-wave-outboard-motors'
 
 compatibility_date = "2024-01-01"
-pages_build_output_dir = .vitepress/dist
+pages_build_output_dir = ".vitepress/dist"
 
 [vars]
 NODE_ENV = "production"
