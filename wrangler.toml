@@ -1,9 +1,8 @@
-name = "bluewave-outboards"
-compatibility_date = "2024-01-01"
+# wrangler.toml
+name = 'blue-wave-outboard-motors'
 
-[assets]
-directory = "./dist"
-binding = "ASSETS"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
 
 [vars]
 NODE_ENV = "production"
